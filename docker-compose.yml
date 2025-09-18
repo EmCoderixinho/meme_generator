@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./meme_generator_backend
+    ports:
+      - "5000:3000" # ISPRAVLJENO: mapiraj host port 5000 na kontejnerski port 3000
+    volumes:
+      - ./meme_generator_backend:/usr/src/app
+    command: npm run start:dev
+
+  frontend:
+    build:
+      context: ./meme_generator_frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./meme_generator_frontend:/app
+    environment:
+      - REACT_APP_BACKEND_URL=http://backend:3000 # ISPRAVLJENO: Ažuriraj backend port na 3000
+    depends_on:
+      - backend

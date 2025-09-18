@@ -1,0 +1,17 @@
+# Folders to ignore in the main project folder
+/node_modules
+.env
+.DS_Store
+
+# Backend-specific ignores (NestJS)
+/meme_generator_backend/node_modules
+/meme_generator_backend/dist
+/meme_generator_backend/.env
+
+# Frontend-specific ignores (React)
+/meme_generator_frontend/node_modules
+/meme_generator_frontend/build
+/meme_generator_frontend/.env.local
+/meme_generator_frontend/.env.development.local
+/meme_generator_frontend/.env.test.local
+/meme_generator_frontend/.env.production.local
