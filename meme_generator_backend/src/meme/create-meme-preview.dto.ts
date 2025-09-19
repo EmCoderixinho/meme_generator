@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsNumber } from 'class-validator';
 
 export class CreateMemePreviewDto {
   @IsNotEmpty()
@@ -24,5 +24,11 @@ export class CreateMemePreviewDto {
     watermarkImage?: string;
     watermarkPosition?: string;
     scaleDown?: number;
+  };
+
+  @IsOptional()
+  canvasSize?: {
+    width?: number;
+    height?: number;
   };
 }

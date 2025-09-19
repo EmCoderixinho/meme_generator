@@ -38,26 +38,25 @@ export class MemeService {
 
         const image = sharp(imageBuffer);
         const metadata = await image.metadata();
-        
-        // scaleDown koristi default 0.05 za preview ako nije definisan
+
         const scaleDown = config.scaleDown ?? 0.05;
-        const scaledWidth = Math.max(200, Math.floor(metadata.width * scaleDown));
-        const scaledHeight = Math.max(200, Math.floor(metadata.height * scaleDown));
+        
+        const canvasWidth = dto.canvasSize?.width ?? metadata.width;
+        const canvasHeight = dto.canvasSize?.height ?? metadata.height;
 
-
-        const scaledImage = image.resize(scaledWidth, scaledHeight);
+        const scaledImage = image.resize(canvasWidth, canvasHeight);
 
         const topText = config.allCaps && config.topText ? config.topText.toUpperCase() : config.topText;
         const bottomText = config.allCaps && config.bottomText ? config.bottomText.toUpperCase() : config.bottomText;
 
         if (topText) {
-            const topSvg = this.generateTextSvg({ ...config, text: topText, width: scaledWidth, position: 'top' });
+            const topSvg = this.generateTextSvg({ ...config, text: topText, width: canvasWidth, position: 'top' });
             compositeOperations.push({ input: Buffer.from(topSvg), top: config.padding, left: config.padding });
         }
 
         if (bottomText) {
-            const bottomSvg = this.generateTextSvg({ ...config, text: bottomText, width: scaledWidth, position: 'bottom' });
-            const bottomTextOffset = scaledHeight - 100 - config.padding; 
+            const bottomSvg = this.generateTextSvg({ ...config, text: bottomText, width: canvasWidth, position: 'bottom' });
+            const bottomTextOffset = canvasHeight - 100 - config.padding; 
             compositeOperations.push({ input: Buffer.from(bottomSvg), top: bottomTextOffset, left: config.padding });
         }
 
@@ -81,16 +80,16 @@ export class MemeService {
                     top = padding;
                     break;
                 case 'top-right':
-                    left = scaledWidth - watermarkMetadata.width - padding;
+                    left = canvasWidth - watermarkMetadata.width - padding;
                     top = padding;
                     break;
                 case 'bottom-left':
                     left = padding;
-                    top = scaledHeight - watermarkMetadata.height - padding;
+                    top = canvasHeight - watermarkMetadata.height - padding;
                     break;
                 case 'bottom-right':
-                    left = scaledWidth - watermarkMetadata.width - padding;
-                    top = scaledHeight - watermarkMetadata.height - padding;
+                    left = canvasWidth - watermarkMetadata.width - padding;
+                    top = canvasHeight - watermarkMetadata.height - padding;
                     break;
             }
             compositeOperations.push({ input: watermarkBuffer, left: left, top: top });
@@ -98,8 +97,9 @@ export class MemeService {
 
         const finalImage = await scaledImage
             .composite(compositeOperations)
-            .png()
+            .jpeg({ quality: Math.floor(scaleDown * 100) })
             .toBuffer();
+
 
         return finalImage;
     }
