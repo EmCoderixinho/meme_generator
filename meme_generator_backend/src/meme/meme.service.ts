@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import sharp from 'sharp';
+import { createCanvas, CanvasRenderingContext2D } from 'canvas';
 import { Config } from 'src/config/config.entity';
 import { CreateMemePreviewDto } from 'src/meme/create-meme-preview.dto';
 import { ConfigService } from '../config/config.service';
@@ -7,7 +8,7 @@ import { ConfigService } from '../config/config.service';
 @Injectable()
 export class MemeService {
     constructor(
-        private readonly configService: ConfigService,
+      private readonly configService: ConfigService,
     ) {}
     
     async generateMeme(dto: CreateMemePreviewDto): Promise<Buffer> {
@@ -50,14 +51,23 @@ export class MemeService {
         const bottomText = config.allCaps && config.bottomText ? config.bottomText.toUpperCase() : config.bottomText;
 
         if (topText) {
-            const topSvg = this.generateTextSvg({ ...config, text: topText, width: canvasWidth, position: 'top' });
-            compositeOperations.push({ input: Buffer.from(topSvg), top: config.padding, left: config.padding });
+            const { buffer: topSvg, height: topSvgHeight } = await this.generateTextLayer({ ...config, text: topText, width: canvasWidth, position: 'top' });
+            compositeOperations.push({ 
+                input: Buffer.from(topSvg), 
+                top: config.padding ?? 20, 
+                left: config.padding ?? 20 
+            });
         }
 
         if (bottomText) {
-            const bottomSvg = this.generateTextSvg({ ...config, text: bottomText, width: canvasWidth, position: 'bottom' });
-            const bottomTextOffset = canvasHeight - 100 - config.padding; 
-            compositeOperations.push({ input: Buffer.from(bottomSvg), top: bottomTextOffset, left: config.padding });
+            const { buffer: bottomSvg, height: bottomSvgHeight } = await this.generateTextLayer({ ...config, text: bottomText, width: canvasWidth, position: 'bottom' });
+            const padding = config.padding ?? 20;
+            const bottomTextOffset = canvasHeight - bottomSvgHeight - padding; 
+            compositeOperations.push({ 
+                input: Buffer.from(bottomSvg), 
+                top: bottomTextOffset, 
+                left: padding 
+            });
         }
 
         if (config.watermarkImage && config.watermarkPosition) {
@@ -104,7 +114,7 @@ export class MemeService {
         return finalImage;
     }
 
-    private generateTextSvg(options: {
+    private async generateTextLayer(options: {
       text: string;
       width: number;
       position: 'top' | 'bottom';
@@ -113,33 +123,82 @@ export class MemeService {
       textColor: string;
       strokeColor: string;
       strokeWidth: number;
-      textAlign: string;
+      textAlign: 'center' | 'left' | 'right';
       padding: number;
-    }): string {
+    }): Promise<{ buffer: Buffer, height: number }> {
       const { text, width, position, fontFamily, fontSize, textColor, strokeColor, strokeWidth, textAlign, padding } = options;
       
-      const svgWidth = width - (padding * 2);
-      const svgX = textAlign === 'center' ? svgWidth / 2 : (textAlign === 'left' ? 0 : svgWidth);
-      const anchor = textAlign === 'center' ? 'middle' : (textAlign === 'left' ? 'start' : 'end');
-      const baseline = position === 'top' ? 'hanging' : 'auto';
+      const textCanvasWidth = width - (padding * 2);
+      const lineHeight = fontSize * 1.2;
+
+      // Create a temporary canvas to measure text and determine lines
+      const tempCanvas = createCanvas(textCanvasWidth, 100);
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.font = `900 ${fontSize}px ${fontFamily}`;
       
-      return `
-        <svg width="${svgWidth}" height="100">
-          <style>
-            .text {
-              font-family: ${fontFamily};
-              font-size: ${fontSize}px;
-              fill: ${textColor};
-              stroke: ${strokeColor};
-              stroke-width: ${strokeWidth}px;
-              text-anchor: ${anchor};
-              dominant-baseline: ${baseline};
-              font-weight: 900;
-              text-shadow: 2px 2px 4px #000000;
+      const textLines = this._wrapText(tempCtx, text, textCanvasWidth);
+      const textCanvasHeight = textLines.length * lineHeight + (strokeWidth * 2);
+
+      const canvas = createCanvas(textCanvasWidth, textCanvasHeight);
+      const ctx = canvas.getContext('2d');
+      ctx.font = `900 ${fontSize}px ${fontFamily}`;
+      ctx.fillStyle = textColor;
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = strokeWidth ?? 4;
+      ctx.textAlign = textAlign;
+      ctx.textBaseline = 'top';
+
+      const x = textAlign === 'center' ? textCanvasWidth / 2 : (textAlign === 'left' ? 0 : textCanvasWidth);
+
+      textLines.forEach((line, index) => {
+        const y = index * lineHeight + (strokeWidth / 2);
+        ctx.strokeText(line, x, y);
+        ctx.fillText(line, x, y);
+      });
+
+      return { buffer: canvas.toBuffer('image/png'), height: textCanvasHeight };
+    }
+
+    private _wrapText(ctx: CanvasRenderingContext2D, textToWrap: string, maxWidth: number): string[] {
+      const words = textToWrap.split(' ');
+      const lines: string[] = [];
+      let currentLine = '';
+
+      for (const word of words) {
+        // This word is longer than the max width, so we need to break it
+        if (ctx.measureText(word).width > maxWidth) {
+          // If there's anything on the current line, push it
+          if (currentLine !== '') {
+            lines.push(currentLine.trim());
+            currentLine = '';
+          }
+
+          // Break the long word itself
+          let tempWord = word;
+          while (ctx.measureText(tempWord).width > maxWidth) {
+            let splitIndex = 0;
+            for (let i = 1; i <= tempWord.length; i++) {
+              if (ctx.measureText(tempWord.substring(0, i)).width > maxWidth) {
+                splitIndex = i - 1;
+                break;
+              }
             }
-          </style>
-          <text x="${svgX}" y="${position === 'top' ? 10 : 90}" class="text">${text}</text>
-        </svg>
-      `;
+            lines.push(tempWord.substring(0, splitIndex));
+            tempWord = tempWord.substring(splitIndex);
+          }
+          currentLine = tempWord + ' ';
+          continue;
+        }
+
+        const testLine = currentLine + word + ' ';
+        if (ctx.measureText(testLine).width > maxWidth && currentLine.length > 0) {
+          lines.push(currentLine.trim());
+          currentLine = word + ' ';
+        } else {
+          currentLine = testLine;
+        }
+      }
+      lines.push(currentLine.trim());
+      return lines;
     }
 }
