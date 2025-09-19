@@ -1,54 +1,49 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import sharp from 'sharp';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Config } from '../entity/config.entity';
-import { CreateMemePreviewDto } from '../dto/create-meme-preview.dto';
-import { CreateConfigDto } from '../dto/create-config.dto';
+import { Config } from 'src/config/config.entity';
+import { CreateMemePreviewDto } from 'src/meme/create-meme-preview.dto';
+import { ConfigService } from '../config/config.service';
 
 @Injectable()
 export class MemeService {
     constructor(
-        @InjectRepository(Config)
-        private configRepository: Repository<Config>,
+        private readonly configService: ConfigService,
     ) {}
-
-    public async saveConfig(dto: CreateConfigDto): Promise<string> {
-        const config = this.configRepository.create(dto);
-        await this.configRepository.save(config);
-        return config.id;
-    }
-
+    
     async generateMeme(dto: CreateMemePreviewDto): Promise<Buffer> {
         const base64Parts = dto.image.split(';base64,');
         const base64Data = base64Parts.pop();
 
         if (!base64Data) {
-            throw new Error('Invalid image format. Expected a base64 string with a data URL prefix.');
+            throw new BadRequestException('Invalid image format. Expected a base64 string with a data URL prefix.');
         }
         
         const imageBuffer = Buffer.from(base64Data, 'base64');
 
         const compositeOperations: sharp.OverlayOptions[] = [];
         
-        let config: Config;
+        let config: Config | any;
 
         if (dto.configId) {
-            const foundConfig = await this.configRepository.findOne({ where: { id: dto.configId } });
-            if (!foundConfig) {
+            try {
+                config = await this.configService.getConfigById(dto.configId);
+            } catch (error) {
                 throw new NotFoundException(`Config with ID ${dto.configId} not found.`);
             }
-            config = foundConfig;
+        } else if (dto.config) {
+            config = dto.config;
         } else {
-            throw new Error('configId is required for this endpoint.');
+            throw new BadRequestException('Either configId or config object must be provided.');
         }
 
         const image = sharp(imageBuffer);
         const metadata = await image.metadata();
         
-        // Koristi scaleDown svojstvo iz baze podataka
-        const scaledWidth = Math.floor(metadata.width * config.scaleDown);
-        const scaledHeight = Math.floor(metadata.height * config.scaleDown);
+        // scaleDown koristi default 0.05 za preview ako nije definisan
+        const scaleDown = config.scaleDown ?? 0.05;
+        const scaledWidth = Math.max(200, Math.floor(metadata.width * scaleDown));
+        const scaledHeight = Math.max(200, Math.floor(metadata.height * scaleDown));
+
 
         const scaledImage = image.resize(scaledWidth, scaledHeight);
 
@@ -71,7 +66,7 @@ export class MemeService {
             const watermarkBase64Data = watermarkBase64Parts.pop();
 
             if (!watermarkBase64Data) {
-                throw new Error('Invalid watermark image format. Expected a base64 string with a data URL prefix.');
+                throw new BadRequestException('Invalid watermark image format. Expected a base64 string with a data URL prefix.');
             }
 
             const watermarkBuffer = Buffer.from(watermarkBase64Data, 'base64');

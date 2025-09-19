@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MemeModule } from './meme/meme.module';
+import { Config } from './config/config.entity';
+import { ConfigurationModule } from './config/config.module';
 
 @Module({
   imports: [
@@ -20,13 +20,14 @@ import { MemeModule } from './meme/meme.module';
         username: 'root',
         password: configService.get<string>('DATABASE_PASSWORD'),
         database: 'meme_creator_db',
-        entities: [],
+        entities: [Config],
         synchronize: true,
       }),
     }),
     MemeModule,
+    ConfigurationModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [],
+  providers: [],
 })
 export class AppModule {}

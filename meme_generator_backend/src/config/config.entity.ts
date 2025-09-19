@@ -1,43 +1,46 @@
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
-@Entity('configs')
+@Entity()
 export class Config {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ nullable: true })
-  topText: string;
+  topText?: string;
 
   @Column({ nullable: true })
-  bottomText: string;
+  bottomText?: string;
 
-  @Column()
+  @Column({ default: 'Arial' })
   fontFamily: string;
 
-  @Column('int')
+  @Column({ default: 50 })
   fontSize: number;
 
-  @Column()
+  @Column({ default: '#FFFFFF' })
   textColor: string;
 
-  @Column('text')
+  @Column({ default: '#000000' })
   strokeColor: string;
 
-  @Column('int')
+  @Column({ default: 4 })
   strokeWidth: number;
 
-  @Column()
+  @Column({ default: 'center' })
   textAlign: string;
 
-  @Column('int')
+  @Column({ default: 20 })
   padding: number;
 
-  @Column()
+  @Column({ default: false })
   allCaps: boolean;
 
-  @Column({ type: 'text', nullable: true })
-  watermarkImage: string;
+  @Column({ type: 'float', default: 0.05 })
+  scaleDown: number;
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
+  watermarkImage?: string;
+
+  @Column({ default: 'bottom-right' })
   watermarkPosition: string;
 }
