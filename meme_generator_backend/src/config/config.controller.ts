@@ -10,7 +10,7 @@ export class ConfigController {
   @Post()
   async saveConfig(@Body() body: CreateConfigDto) {
     const configId = await this.configService.saveConfig(body);
-    return { configId };
+    return { id: configId };
   }
 
   @Get(':id')
