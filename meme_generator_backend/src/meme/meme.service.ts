@@ -11,7 +11,7 @@ export class MemeService {
       private readonly configService: ConfigService,
     ) {}
     
-    async generateMeme(dto: CreateMemePreviewDto): Promise<Buffer> {
+    async generateMeme(dto: CreateMemePreviewDto, options: { isPreview?: boolean } = { isPreview: true }): Promise<Buffer> {
         const base64Parts = dto.image.split(';base64,');
         const base64Data = base64Parts.pop();
 
@@ -40,12 +40,22 @@ export class MemeService {
         const image = sharp(imageBuffer);
         const metadata = await image.metadata();
 
-        const scaleDown = config.scaleDown ?? 0.05;
-        
-        const canvasWidth = dto.canvasSize?.width ?? metadata.width;
-        const canvasHeight = dto.canvasSize?.height ?? metadata.height;
+        let canvasWidth: number;
+        let canvasHeight: number;
+        let quality: number;
 
-        const scaledImage = image.resize(canvasWidth, canvasHeight);
+        if (options.isPreview) {
+            const scaleDown = config.scaleDown ?? 0.05;
+            canvasWidth = dto.canvasSize?.width ?? metadata.width;
+            canvasHeight = dto.canvasSize?.height ?? metadata.height;
+            quality = Math.max(1, Math.min(100, Math.floor(scaleDown * 100)));
+        } else {
+            canvasWidth = metadata.width;
+            canvasHeight = metadata.height;
+            quality = 95;
+        }
+
+        const processedImage = image.resize(canvasWidth, canvasHeight);
 
         const topText = config.allCaps && config.topText ? config.topText.toUpperCase() : config.topText;
         const bottomText = config.allCaps && config.bottomText ? config.bottomText.toUpperCase() : config.bottomText;
@@ -105,9 +115,9 @@ export class MemeService {
             compositeOperations.push({ input: watermarkBuffer, left: left, top: top });
         }
 
-        const finalImage = await scaledImage
+        const finalImage = await processedImage
             .composite(compositeOperations)
-            .jpeg({ quality: Math.floor(scaleDown * 100) })
+            .jpeg({ quality })
             .toBuffer();
 
 
