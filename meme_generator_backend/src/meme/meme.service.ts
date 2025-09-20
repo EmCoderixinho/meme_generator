@@ -63,10 +63,10 @@ export class MemeService {
         if (topText) {
             const { buffer: topSvg, height: topSvgHeight } = await this.generateTextLayer({ ...config, text: topText, width: canvasWidth, position: 'top' });
             compositeOperations.push({ 
-                input: Buffer.from(topSvg), 
-                top: config.padding ?? 20, 
-                left: config.padding ?? 20 
-            });
+              input: Buffer.from(topSvg), 
+              top: Math.round(config.padding ?? 20), 
+              left: Math.round(config.padding ?? 20) 
+          });
         }
 
         if (bottomText) {
@@ -74,10 +74,10 @@ export class MemeService {
             const padding = config.padding ?? 20;
             const bottomTextOffset = canvasHeight - bottomSvgHeight - padding; 
             compositeOperations.push({ 
-                input: Buffer.from(bottomSvg), 
-                top: bottomTextOffset, 
-                left: padding 
-            });
+              input: Buffer.from(bottomSvg), 
+              top: Math.round(bottomTextOffset), 
+              left: Math.round(config.padding ?? 20) 
+          });
         }
 
         if (config.watermarkImage && config.watermarkPosition) {
@@ -112,7 +112,11 @@ export class MemeService {
                     top = canvasHeight - watermarkMetadata.height - padding;
                     break;
             }
-            compositeOperations.push({ input: watermarkBuffer, left: left, top: top });
+            compositeOperations.push({ 
+                input: watermarkBuffer, 
+                left: Math.round(left), 
+                top: Math.round(top) 
+            });
         }
 
         const finalImage = await processedImage
