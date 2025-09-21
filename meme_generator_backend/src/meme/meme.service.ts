@@ -32,58 +32,84 @@ export class MemeService {
                 throw new NotFoundException(`Config with ID ${dto.configId} not found.`);
             }
         } else {
-            throw new BadRequestException(' configId must be provided.');
+            throw new BadRequestException('configId must be provided.');
         }
 
         const image = sharp(imageBuffer);
         const metadata = await image.metadata();
 
-        let canvasWidth: number;
-        let canvasHeight: number;
-        let quality: number;
-
-        if (options.isPreview) {
-            const scaleDown = config.scaleDown ?? 0.05;
-            canvasWidth = dto.canvasSize?.width ?? metadata.width;
-            canvasHeight = dto.canvasSize?.height ?? metadata.height;
-            quality = Math.max(1, Math.min(100, Math.floor(scaleDown * 100)));
-        } else {
-            canvasWidth = metadata.width;
-            canvasHeight = metadata.height;
-            quality = 95;
+        if (!metadata.width || !metadata.height) {
+          throw new BadRequestException('Could not read image dimensions.');
         }
 
-        const processedImage = image.resize(canvasWidth, canvasHeight);
+        const originalWidth = metadata.width;
+        const originalHeight = metadata.height;
+
+        let targetWidth = originalWidth;
+        let targetHeight = originalHeight;
+        let quality = 95;
+
+        if (options.isPreview) {
+          const scaleDown = config.scaleDown ?? 0.05;
+          targetWidth = dto.canvasSize?.width ?? originalWidth;
+          targetHeight = dto.canvasSize?.height ?? originalHeight;
+          quality = Math.max(1, Math.min(100, Math.floor(scaleDown * 100)));
+        }
+
+        const processedImage = image.clone();
 
         const topText = config.allCaps && config.topText ? config.topText.toUpperCase() : config.topText;
         const bottomText = config.allCaps && config.bottomText ? config.bottomText.toUpperCase() : config.bottomText;
 
         if (topText) {
-            const { buffer: topSvg, height: topSvgHeight } = await this.generateTextLayer({ ...config, text: topText, width: canvasWidth, position: 'top' });
-            compositeOperations.push({ 
-              input: Buffer.from(topSvg), 
-              top: Math.round(config.padding ?? 20), 
-              left: Math.round(config.padding ?? 20) 
+          const { buffer: topSvg} =
+            await this.generateTextLayer({
+              ...config,
+              text: topText,
+              width: originalWidth,
+              position: 'top',
+            });
+          compositeOperations.push({
+            input: Buffer.from(topSvg),
+            top: Math.round(config.padding ?? 20),
+            left: Math.round(config.padding ?? 20),
           });
         }
 
         if (bottomText) {
-            const { buffer: bottomSvg, height: bottomSvgHeight } = await this.generateTextLayer({ ...config, text: bottomText, width: canvasWidth, position: 'bottom' });
-            const padding = config.padding ?? 20;
-            const bottomTextOffset = canvasHeight - bottomSvgHeight - padding; 
-            compositeOperations.push({ 
-              input: Buffer.from(bottomSvg), 
-              top: Math.round(bottomTextOffset), 
-              left: Math.round(config.padding ?? 20) 
+          const { buffer: bottomSvg, height: bottomSvgHeight } =
+            await this.generateTextLayer({
+              ...config,
+              text: bottomText,
+              width: originalWidth,
+              position: 'bottom',
+            });
+          const padding = config.padding ?? 20;
+          const bottomTextOffset = originalHeight - bottomSvgHeight - padding;
+          compositeOperations.push({
+            input: Buffer.from(bottomSvg),
+            top: Math.round(bottomTextOffset),
+            left: Math.round(config.padding ?? 20),
           });
         }
 
-        await this._addWatermark(compositeOperations, config, canvasWidth, canvasHeight);
+        await this._addWatermark(compositeOperations, config, originalWidth, originalHeight);
 
-        const finalImage = await processedImage
-            .composite(compositeOperations)
+        let finalImage = await processedImage
+          .composite(compositeOperations)
+          .jpeg({ quality })
+          .toBuffer();
+
+        if (options.isPreview && dto.canvasSize) {
+          finalImage = await sharp(finalImage)
+            .resize({
+              width: targetWidth,
+              height: targetHeight,
+              fit: 'fill',
+            })
             .jpeg({ quality })
             .toBuffer();
+        }
 
 
         return finalImage;
