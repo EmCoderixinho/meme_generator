@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ChangeEvent } from 'react';
+import React, { useState, useEffect, ChangeEvent, useRef } from 'react';
 import { useDebounce } from '../hooks/useDebounce';
 
 interface MemeConfig {
@@ -32,6 +32,8 @@ const MemeEditor: React.FC = () => {
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [configId, setConfigId] = useState<string | null>(null);
+    const isInitialMount = useRef(true);
 
     const debouncedConfig = useDebounce(config, 500);
 
@@ -70,15 +72,37 @@ const MemeEditor: React.FC = () => {
         }
     };
 
-    const sanitizeConfig = (cfg: MemeConfig) => ({
-        ...cfg,
-        fontSize: Math.round(cfg.fontSize),
-        strokeWidth: Math.round(cfg.strokeWidth),
-        padding: Math.round(cfg.padding),
-        });
+    useEffect(() => {
+        // Do not save the default config on the initial render
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
+        }
+
+        const saveConfig = async () => {
+            try {
+                const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/config`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(debouncedConfig),
+                });
+                if (!response.ok) throw new Error('Failed to save configuration.');
+                const savedConfig = await response.json();
+                setConfigId(savedConfig.id);
+            } catch (err: any) {
+                setError(err.message);
+            }
+        };
+
+        saveConfig();
+    }, [debouncedConfig]);
 
     useEffect(() => {
-        if (!originalImage) return;
+        if (!originalImage || !configId) {
+            // Clear preview if there's no image or saved config
+            setPreviewImage(null);
+            return;
+        }
 
         const fetchPreview = async () => {
             setIsLoading(true);
@@ -87,7 +111,7 @@ const MemeEditor: React.FC = () => {
                 const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/meme/preview`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: originalImage, config: sanitizeConfig(debouncedConfig) }),
+                    body: JSON.stringify({ image: originalImage, configId: configId }),
                 });
 
                 if (!response.ok) {
@@ -104,7 +128,7 @@ const MemeEditor: React.FC = () => {
         };
 
         fetchPreview();
-    }, [originalImage, debouncedConfig]);
+    }, [originalImage, configId]);
 
     const handleGenerateMeme = async () => {
         if (!originalImage) return;
@@ -114,7 +138,7 @@ const MemeEditor: React.FC = () => {
             const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/meme/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: originalImage, config: sanitizeConfig(config) }),
+                body: JSON.stringify({ image: originalImage, configId: configId }),
             });
 
             if (!response.ok) {

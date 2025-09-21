@@ -38,7 +38,7 @@ export class Config {
   @Column({ type: 'float', default: 0.05 })
   scaleDown: number;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'mediumtext', nullable: true })
   watermarkImage?: string;
 
   @Column({ default: 'bottom-right' })

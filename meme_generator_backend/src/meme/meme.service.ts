@@ -31,8 +31,6 @@ export class MemeService {
             } catch (error) {
                 throw new NotFoundException(`Config with ID ${dto.configId} not found.`);
             }
-        } else if (dto.config) {
-            config = dto.config;
         } else {
             throw new BadRequestException('Either configId or config object must be provided.');
         }
@@ -80,44 +78,7 @@ export class MemeService {
           });
         }
 
-        if (config.watermarkImage && config.watermarkPosition) {
-            const watermarkBase64Parts = config.watermarkImage.split(';base64,');
-            const watermarkBase64Data = watermarkBase64Parts.pop();
-
-            if (!watermarkBase64Data) {
-                throw new BadRequestException('Invalid watermark image format. Expected a base64 string with a data URL prefix.');
-            }
-
-            const watermarkBuffer = Buffer.from(watermarkBase64Data, 'base64');
-            const watermarkMetadata = await sharp(watermarkBuffer).metadata();
-
-            let left = 0, top = 0;
-            const padding = config.padding;
-
-            switch (config.watermarkPosition) {
-                case 'top-left':
-                    left = padding;
-                    top = padding;
-                    break;
-                case 'top-right':
-                    left = canvasWidth - watermarkMetadata.width - padding;
-                    top = padding;
-                    break;
-                case 'bottom-left':
-                    left = padding;
-                    top = canvasHeight - watermarkMetadata.height - padding;
-                    break;
-                case 'bottom-right':
-                    left = canvasWidth - watermarkMetadata.width - padding;
-                    top = canvasHeight - watermarkMetadata.height - padding;
-                    break;
-            }
-            compositeOperations.push({ 
-                input: watermarkBuffer, 
-                left: Math.round(left), 
-                top: Math.round(top) 
-            });
-        }
+        await this._addWatermark(compositeOperations, config, canvasWidth, canvasHeight);
 
         const finalImage = await processedImage
             .composite(compositeOperations)
@@ -214,5 +175,63 @@ export class MemeService {
       }
       lines.push(currentLine.trim());
       return lines;
+    }
+
+    private async _addWatermark(compositeOperations: sharp.OverlayOptions[], config: Config, canvasWidth: number, canvasHeight: number): Promise<void> {
+        if (config.watermarkImage && config.watermarkPosition) {
+            const watermarkBase64Parts = config.watermarkImage.split(';base64,');
+            const watermarkBase64Data = watermarkBase64Parts.pop();
+
+            if (!watermarkBase64Data) {
+                throw new BadRequestException('Invalid watermark image format. Expected a base64 string with a data URL prefix.');
+            }
+
+            let watermarkBuffer = Buffer.from(watermarkBase64Data, 'base64');
+            let watermarkImage = sharp(watermarkBuffer);
+            let watermarkMetadata = await watermarkImage.metadata();
+
+            const maxWatermarkWidth = canvasWidth * 0.25;
+            const maxWatermarkHeight = canvasHeight * 0.25;
+
+            if (watermarkMetadata.width > maxWatermarkWidth || watermarkMetadata.height > maxWatermarkHeight) {
+                watermarkImage = watermarkImage.resize({
+                    width: Math.round(maxWatermarkWidth),
+                    height: Math.round(maxWatermarkHeight),
+                    fit: 'inside', 
+                    withoutEnlargement: true, 
+                });
+                
+                const resizedWatermarkBuffer = await watermarkImage.toBuffer();
+                watermarkBuffer = Buffer.from(resizedWatermarkBuffer);
+                watermarkMetadata = await sharp(watermarkBuffer).metadata();
+            }
+
+            let left = 0, top = 0;
+            const padding = config.padding;
+
+            switch (config.watermarkPosition) {
+                case 'top-left':
+                    left = padding;
+                    top = padding;
+                    break;
+                case 'top-right':
+                    left = canvasWidth - watermarkMetadata.width - padding;
+                    top = padding;
+                    break;
+                case 'bottom-left':
+                    left = padding;
+                    top = canvasHeight - watermarkMetadata.height - padding;
+                    break;
+                case 'bottom-right':
+                    left = canvasWidth - watermarkMetadata.width - padding;
+                    top = canvasHeight - watermarkMetadata.height - padding;
+                    break;
+            }
+            compositeOperations.push({ 
+                input: watermarkBuffer, 
+                left: Math.round(left), 
+                top: Math.round(top) 
+            });
+        }
     }
 }

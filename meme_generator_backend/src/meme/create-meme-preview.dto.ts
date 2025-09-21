@@ -1,4 +1,6 @@
-import { IsNotEmpty, IsString, IsOptional, IsNumber } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { CreateConfigDto } from 'src/config/create-config.dto';
 
 export class CreateMemePreviewDto {
   @IsNotEmpty()
@@ -8,23 +10,6 @@ export class CreateMemePreviewDto {
   @IsOptional()
   @IsString()
   configId?: string;
-
-  @IsOptional()
-  config?: {
-    topText?: string;
-    bottomText?: string;
-    fontFamily?: string;
-    fontSize?: number;
-    textColor?: string;
-    strokeColor?: string;
-    strokeWidth?: number;
-    textAlign?: 'center' | 'left' | 'right';
-    padding?: number;
-    allCaps?: boolean;
-    watermarkImage?: string;
-    watermarkPosition?: string;
-    scaleDown?: number;
-  };
 
   @IsOptional()
   canvasSize?: {
