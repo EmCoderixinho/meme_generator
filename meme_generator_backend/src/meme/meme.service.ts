@@ -32,7 +32,7 @@ export class MemeService {
                 throw new NotFoundException(`Config with ID ${dto.configId} not found.`);
             }
         } else {
-            throw new BadRequestException('Either configId or config object must be provided.');
+            throw new BadRequestException(' configId must be provided.');
         }
 
         const image = sharp(imageBuffer);
