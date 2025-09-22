@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Res, HttpCode, HttpStatus } from '@nestjs/common';
+import { Body, Controller, Post, Res, HttpCode, HttpStatus, Get } from '@nestjs/common';
 import { MemeService } from './meme.service';
 import type { Response } from 'express';
 import { CreateMemePreviewDto } from 'src/meme/create-meme-preview.dto';
@@ -29,6 +29,17 @@ export class MemeController {
         } catch (error) {
             console.error('Error generating meme:', error);
             res.status(500).send({ message: 'Error while generating meme.' });
+        }
+    }
+
+    @Get('fonts')
+    async getAvailableFonts() {
+        try {
+            const fonts = await this.memeService.getAvailableFonts();
+            return { fonts };
+        } catch (error) {
+            console.error('Error getting available fonts:', error);
+            return { fonts: ['Arial', 'DejaVu Sans', 'DejaVu Serif', 'FreeSans', 'FreeSerif'] };
         }
     }
 }

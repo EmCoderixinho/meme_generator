@@ -2,6 +2,20 @@ FROM node:18
 
 WORKDIR /usr/src/app
 
+# Install font packages and dependencies
+RUN apt-get update && apt-get install -y \
+    fontconfig \
+    fonts-liberation \
+    fonts-dejavu-core \
+    fonts-freefont-ttf \
+    fonts-noto \
+    fonts-liberation2 \
+    fonts-noto-color-emoji \
+    fonts-noto-cjk \
+    curl \
+    && fc-cache -fv \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY package*.json ./
 RUN npm install
 

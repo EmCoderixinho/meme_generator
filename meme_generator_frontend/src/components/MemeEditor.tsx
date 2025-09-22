@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ChangeEvent, useRef } from 'react';
+import React, { useState, useEffect, ChangeEvent, useRef, useCallback } from 'react';
 import { useDebounce } from '../hooks/useDebounce';
 import { MemeConfig } from '../types/meme';
 import { ControlsPanel } from './ControlsPanel';
@@ -29,9 +29,34 @@ const MemeEditor: React.FC = () => {
     const [configId, setConfigId] = useState<string | null>(null);
     const isInitialMount = useRef(true);
     const [canvasSize, setCanvasSize] = useState<{ width: string; height: string }>({ width: '', height: '' });
+    const [availableFonts, setAvailableFonts] = useState<string[]>(['Impact', 'Arial', 'Helvetica', 'Comic Sans MS']);
+    const [fontsLoading, setFontsLoading] = useState(false);
 
     const debouncedConfig = useDebounce(config, 500);
     const debouncedCanvasSize = useDebounce(canvasSize, 500);
+
+    const fetchAvailableFonts = useCallback(async () => {
+        setFontsLoading(true);
+        try {
+            const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/meme/fonts`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch available fonts');
+            }
+            const data = await response.json();
+            const fonts = data.fonts || ['Impact', 'Arial', 'Helvetica', 'Comic Sans MS'];
+            setAvailableFonts(fonts);
+            
+            // If current font is not in the available fonts, update to the first available font
+            if (!fonts.includes(config.fontFamily)) {
+                setConfig(prev => ({ ...prev, fontFamily: fonts[0] || 'Impact' }));
+            }
+        } catch (error) {
+            console.error('Error fetching available fonts:', error);
+            // Keep the default fonts if fetch fails
+        } finally {
+            setFontsLoading(false);
+        }
+    }, [config.fontFamily]);
 
     const handleConfigChange = (
         e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -116,6 +141,11 @@ const MemeEditor: React.FC = () => {
     const handleClearWatermark = () => {
         setConfig(prev => ({ ...prev, watermarkImage: '' }));
     };
+
+    useEffect(() => {
+        // Fetch available fonts on component mount
+        fetchAvailableFonts();
+    }, [fetchAvailableFonts]);
 
     useEffect(() => {
         const effectiveCanvasWidth = canvasSize.width ? parseInt(canvasSize.width, 10) : (originalImage ? 1000 : 0); 
@@ -236,6 +266,8 @@ const MemeEditor: React.FC = () => {
                 isLoading={isLoading}
                 originalImage={originalImage}
                 configId={configId}
+                availableFonts={availableFonts}
+                fontsLoading={fontsLoading}
                 handleConfigChange={handleConfigChange}
                 handleImageUpload={handleImageUpload}
                 handleWatermarkUpload={handleWatermarkUpload}

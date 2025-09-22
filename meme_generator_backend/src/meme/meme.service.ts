@@ -1,15 +1,301 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import sharp from 'sharp';
-import { createCanvas, CanvasRenderingContext2D } from 'canvas';
+import { createCanvas, CanvasRenderingContext2D, registerFont } from 'canvas';
 import { Config } from 'src/config/config.entity';
 import { CreateMemePreviewDto } from 'src/meme/create-meme-preview.dto';
 import { ConfigService } from '../config/config.service';
 
 @Injectable()
 export class MemeService {
+    private registeredFonts: Set<string> = new Set();
+    
     constructor(
       private readonly configService: ConfigService,
-    ) {}
+    ) {
+        // Register common fonts that might be available on the system
+        this.registerSystemFonts();
+    }
+
+    private registerSystemFonts() {
+        console.log('🔤 Starting font registration...');
+        
+        // First, register some essential fonts manually
+        this.registerEssentialFonts();
+        
+        // Then try to discover fonts from the system
+        this.discoverAndRegisterFonts();
+        
+        // Then register fonts from common locations
+        this.registerFontsFromCommonLocations();
+        
+        // Finally, register some fallback fonts
+        this.registerFallbackFonts();
+    }
+
+    private registerEssentialFonts() {
+        console.log('🔤 Registering essential fonts...');
+        
+        // Register some essential fonts that should always work
+        const essentialFonts = [
+            { family: 'Arial', path: '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf' },
+            { family: 'Arial Bold', path: '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf' },
+            { family: 'Times New Roman', path: '/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf' },
+            { family: 'Times New Roman Bold', path: '/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf' },
+            { family: 'Impact', path: '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf' }, // Use LiberationSans-Bold as Impact
+            { family: 'Comic Sans MS', path: '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf' }, // Use LiberationSans as Comic Sans
+            { family: 'Helvetica', path: '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf' }, // Use LiberationSans as Helvetica
+            { family: 'Verdana', path: '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf' }, // Use LiberationSans as Verdana
+            // DejaVu fonts (always available)
+            { family: 'DejaVu Sans', path: '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf' },
+            { family: 'DejaVu Serif', path: '/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf' },
+            { family: 'DejaVu Sans Mono', path: '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf' },
+        ];
+
+        let registeredCount = 0;
+        essentialFonts.forEach(font => {
+            try {
+                registerFont(font.path, { family: font.family });
+                this.registeredFonts.add(font.family);
+                registeredCount++;
+                console.log(`✅ Registered essential font: ${font.family}`);
+            } catch (error) {
+                console.log(`❌ Essential font not found: ${font.family} at ${font.path}`);
+            }
+        });
+        
+        console.log(`🎉 Successfully registered ${registeredCount} essential fonts`);
+    }
+
+    private discoverAndRegisterFonts() {
+        try {
+            const { execSync } = require('child_process');
+            const fontPaths = execSync('fc-list : file', { encoding: 'utf8' }).trim().split('\n');
+            
+            console.log(`📁 Found ${fontPaths.length} font files on system`);
+            
+            const registeredFonts = new Set();
+            let registeredCount = 0;
+            
+            // Process fonts in batches to avoid overwhelming the system
+            const batchSize = 50;
+            for (let i = 0; i < fontPaths.length; i += batchSize) {
+                const batch = fontPaths.slice(i, i + batchSize);
+                
+                batch.forEach(fontPath => {
+                    if (fontPath && fontPath.trim()) {
+                        try {
+                            // Clean the font path
+                            const cleanPath = fontPath.trim().replace(/::.*$/, '');
+                            if (cleanPath && (cleanPath.endsWith('.ttf') || cleanPath.endsWith('.otf'))) {
+                                // Extract font family name from the path
+                                const fontName = this.extractFontName(cleanPath);
+                                
+                                if (fontName && !registeredFonts.has(fontName)) {
+                                    try {
+                                        registerFont(cleanPath, { family: fontName });
+                                        registeredFonts.add(fontName);
+                                        this.registeredFonts.add(fontName);
+                                        registeredCount++;
+                                        console.log(`✅ Registered font: ${fontName}`);
+                                    } catch (error) {
+                                        console.log(`❌ Failed to register font: ${fontName} - ${error.message}`);
+                                    }
+                                }
+                            }
+                        } catch (error) {
+                            // Font registration failed, that's okay
+                            console.log(`❌ Failed to register font from ${fontPath.trim()}: ${error.message}`);
+                        }
+                    }
+                });
+                
+                // Small delay between batches
+                if (i + batchSize < fontPaths.length) {
+                    require('child_process').execSync('sleep 0.1', { stdio: 'ignore' });
+                }
+            }
+            
+            console.log(`🎉 Successfully registered ${registeredCount} fonts from system discovery`);
+        } catch (error) {
+            console.log('❌ Could not discover system fonts:', error.message);
+        }
+    }
+
+    private extractFontName(fontPath: string): string {
+        const fileName = fontPath.split('/').pop()?.replace(/\.(ttf|otf)$/i, '') || '';
+        
+        // Clean up common font naming patterns
+        let fontName = fileName
+            .replace(/-/g, ' ')
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, l => l.toUpperCase());
+        
+        // Handle specific font families
+        if (fontName.includes('LiberationSans')) return 'Arial';
+        if (fontName.includes('LiberationSerif')) return 'Times New Roman';
+        if (fontName.includes('DejaVuSans')) return 'DejaVu Sans';
+        if (fontName.includes('DejaVuSerif')) return 'DejaVu Serif';
+        if (fontName.includes('DejaVuSansMono')) return 'DejaVu Sans Mono';
+        if (fontName.includes('FreeSans')) return 'FreeSans';
+        if (fontName.includes('FreeSerif')) return 'FreeSerif';
+        if (fontName.includes('FreeMono')) return 'FreeMono';
+        if (fontName.includes('Roboto')) return 'Roboto';
+        if (fontName.includes('OpenSans')) return 'Open Sans';
+        if (fontName.includes('NotoSans')) return 'Noto Sans';
+        if (fontName.includes('Ubuntu')) return 'Ubuntu';
+        
+        return fontName;
+    }
+
+    private registerAdditionalFonts() {
+        try {
+            const { execSync } = require('child_process');
+            const fontPaths = execSync('fc-list : file | head -10', { encoding: 'utf8' }).trim().split('\n');
+            
+            fontPaths.forEach(fontPath => {
+                if (fontPath && fontPath.trim()) {
+                    try {
+                        // Clean the font path by removing any extra colons or whitespace
+                        const cleanPath = fontPath.trim().replace(/::.*$/, '');
+                        if (cleanPath && (cleanPath.endsWith('.ttf') || cleanPath.endsWith('.otf'))) {
+                            // Extract font family name from the path
+                            const fontName = cleanPath.split('/').pop()?.replace(/\.(ttf|otf)$/i, '') || 'Unknown';
+                            registerFont(cleanPath, { family: fontName });
+                            console.log(`Successfully registered additional font: ${fontName} from ${cleanPath}`);
+                        }
+                    } catch (error) {
+                        // Font registration failed, that's okay
+                        console.log(`Failed to register font from ${fontPath.trim()}: ${error.message}`);
+                    }
+                }
+            });
+        } catch (error) {
+            console.log('Could not register additional fonts:', error.message);
+        }
+    }
+
+    private registerFontsFromCommonLocations() {
+        const fs = require('fs');
+        const path = require('path');
+        
+        const commonFontDirs = [
+            '/usr/share/fonts/truetype/dejavu',
+            '/usr/share/fonts/truetype/liberation',
+            '/usr/share/fonts/truetype/freefont',
+            '/usr/share/fonts/truetype/noto',
+            '/usr/share/fonts/truetype/roboto',
+            '/usr/share/fonts/truetype/opensans',
+            '/usr/share/fonts/truetype/ubuntu',
+            '/usr/share/fonts/opentype/liberation',
+            '/usr/share/fonts/opentype/noto',
+            '/usr/share/fonts/truetype',
+            '/usr/share/fonts/opentype',
+            '/usr/share/fonts/Type1',
+            '/usr/share/fonts/Type1/100dpi',
+            '/usr/share/fonts/Type1/75dpi'
+        ];
+
+        const registeredFonts = new Set();
+        let registeredCount = 0;
+
+        commonFontDirs.forEach(dir => {
+            try {
+                if (fs.existsSync(dir)) {
+                    const files = fs.readdirSync(dir);
+                    files.forEach((file: string) => {
+                        if (file.endsWith('.ttf') || file.endsWith('.otf')) {
+                            const fontPath = path.join(dir, file);
+                            const fontName = this.extractFontName(fontPath);
+                            
+                            if (fontName && !registeredFonts.has(fontName)) {
+                                try {
+                                    registerFont(fontPath, { family: fontName });
+                                    registeredFonts.add(fontName);
+                                    this.registeredFonts.add(fontName);
+                                    registeredCount++;
+                                    console.log(`✅ Registered font from common location: ${fontName}`);
+                                } catch (error) {
+                                    console.log(`❌ Failed to register font: ${fontName} from ${fontPath}`);
+                                }
+                            }
+                        }
+                    });
+                }
+            } catch (error) {
+                console.log(`❌ Could not read font directory ${dir}: ${error.message}`);
+            }
+        });
+        
+        console.log(`🎉 Successfully registered ${registeredCount} fonts from common locations`);
+    }
+
+    private registerFallbackFonts() {
+        console.log('🔤 Registering fallback fonts...');
+        
+        // Register some basic fallback fonts that should always work
+        const fallbackFonts = [
+            { family: 'Arial', path: '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf' },
+            { family: 'Times New Roman', path: '/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf' },
+            { family: 'DejaVu Sans', path: '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf' },
+            { family: 'DejaVu Serif', path: '/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf' },
+            { family: 'FreeSans', path: '/usr/share/fonts/truetype/freefont/FreeSans.ttf' },
+            { family: 'FreeSerif', path: '/usr/share/fonts/truetype/freefont/FreeSerif.ttf' },
+        ];
+
+        let registeredCount = 0;
+        fallbackFonts.forEach(font => {
+            try {
+                registerFont(font.path, { family: font.family });
+                this.registeredFonts.add(font.family);
+                registeredCount++;
+                console.log(`✅ Registered fallback font: ${font.family}`);
+            } catch (error) {
+                console.log(`❌ Fallback font not found: ${font.family} at ${font.path}`);
+            }
+        });
+        
+        console.log(`🎉 Successfully registered ${registeredCount} fallback fonts`);
+    }
+
+    async getAvailableFonts(): Promise<string[]> {
+        // Return the fonts that were actually successfully registered with canvas
+        const registeredFontsArray = Array.from(this.registeredFonts);
+        
+        // If no fonts were registered, try to get system fonts as fallback
+        if (registeredFontsArray.length === 0) {
+            try {
+                const { execSync } = require('child_process');
+                const availableFonts = execSync('fc-list : family', { encoding: 'utf8' });
+                const fonts: string[] = availableFonts.trim().split('\n').filter((font: string) => font.trim());
+                
+                // Clean up font names and remove duplicates
+                const cleanedFonts = [...new Set(fonts.map(font => this.cleanFontName(font)))];
+                
+                // Sort fonts alphabetically
+                cleanedFonts.sort();
+                
+                console.log(`📋 Fallback fonts from system: ${cleanedFonts.join(', ')}`);
+                return cleanedFonts;
+            } catch (error) {
+                console.log('Could not get available fonts:', error.message);
+                return ['Arial', 'Times New Roman', 'DejaVu Sans', 'DejaVu Serif', 'FreeSans', 'FreeSerif', 'FreeMono'];
+            }
+        }
+        
+        // Sort the registered fonts alphabetically
+        registeredFontsArray.sort();
+        
+        console.log(`📋 Available registered fonts: ${registeredFontsArray.join(', ')}`);
+        return registeredFontsArray;
+    }
+
+    private cleanFontName(fontName: string): string {
+        // Clean up font names
+        return fontName
+            .replace(/\s+/g, ' ')
+            .trim()
+            .replace(/\b\w/g, l => l.toUpperCase());
+    }
     
     async generateMeme(dto: CreateMemePreviewDto, options: { isPreview?: boolean } = { isPreview: true }): Promise<Buffer> {
         const base64Parts = dto.image.split(';base64,');
@@ -28,6 +314,12 @@ export class MemeService {
         if (dto.configId) {
             try {
                 config = await this.configService.getConfigById(dto.configId);
+                console.log(`Retrieved config from database:`, {
+                    fontFamily: config.fontFamily,
+                    fontSize: config.fontSize,
+                    topText: config.topText,
+                    bottomText: config.bottomText
+                });
             } catch (error) {
                 throw new NotFoundException(`Config with ID ${dto.configId} not found.`);
             }
@@ -129,20 +421,63 @@ export class MemeService {
     }): Promise<{ buffer: Buffer, height: number }> {
       const { text, width, position, fontFamily, fontSize, textColor, strokeColor, strokeWidth, textAlign, padding } = options;
       
+      console.log(`Generating text layer with fontFamily: ${fontFamily}, fontSize: ${fontSize}, text: ${text}`);
+      
       const textCanvasWidth = width - (padding * 2);
       const lineHeight = fontSize * 1.2;
+
+      // Ensure font family is properly quoted if it contains spaces and add fallbacks
+      const safeFontFamily = fontFamily.includes(' ') ? `"${fontFamily}"` : fontFamily;
+      
+      // Try different font weights to see which one works
+      const fontWeights = ['bold', '900', '800', '700', '600', '500', '400', 'normal'];
+      let fontString = `bold ${fontSize}px ${safeFontFamily}, Arial, sans-serif`;
+      
+      // Test if the font is available by trying different weights
+      const testCanvas = createCanvas(100, 100);
+      const testCtx = testCanvas.getContext('2d');
+      
+      let fontFound = false;
+      for (const weight of fontWeights) {
+        const testFontString = `${weight} ${fontSize}px ${safeFontFamily}, Arial, sans-serif`;
+        testCtx.font = testFontString;
+        const metrics = testCtx.measureText('Test');
+        if (metrics.width > 0) {
+          fontString = testFontString;
+          fontFound = true;
+          console.log(`Using font weight: ${weight} for font: ${fontFamily}`);
+          break;
+        }
+      }
+      
+      // If the requested font doesn't work, try fallback fonts
+      if (!fontFound) {
+        const fallbackFonts = ['Arial', 'DejaVu Sans', 'DejaVu Serif', 'FreeSans', 'FreeSerif', 'sans-serif'];
+        for (const fallbackFont of fallbackFonts) {
+          const testFontString = `bold ${fontSize}px ${fallbackFont}`;
+          testCtx.font = testFontString;
+          const metrics = testCtx.measureText('Test');
+          if (metrics.width > 0) {
+            fontString = testFontString;
+            console.log(`Using fallback font: ${fallbackFont} instead of ${fontFamily}`);
+            break;
+          }
+        }
+      }
 
       // Create a temporary canvas to measure text and determine lines
       const tempCanvas = createCanvas(textCanvasWidth, 100);
       const tempCtx = tempCanvas.getContext('2d');
-      tempCtx.font = `900 ${fontSize}px ${fontFamily}`;
+      tempCtx.font = fontString;
       
       const textLines = this._wrapText(tempCtx, text, textCanvasWidth);
       const textCanvasHeight = textLines.length * lineHeight + (strokeWidth * 2);
 
       const canvas = createCanvas(textCanvasWidth, textCanvasHeight);
       const ctx = canvas.getContext('2d');
-      ctx.font = `900 ${fontSize}px ${fontFamily}`;
+      ctx.font = fontString;
+      console.log(`Canvas font set to: ${ctx.font}`);
+      
       ctx.fillStyle = textColor;
       ctx.strokeStyle = strokeColor;
       ctx.lineWidth = strokeWidth ?? 4;

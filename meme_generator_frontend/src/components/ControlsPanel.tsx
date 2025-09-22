@@ -9,6 +9,8 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
     isLoading,
     originalImage,
     configId,
+    availableFonts,
+    fontsLoading,
     handleConfigChange,
     handleImageUpload,
     handleWatermarkUpload,
@@ -68,7 +70,24 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
                 {renderControl('Top Text', 'topText', 'text')}
                 {renderControl('Bottom Text', 'bottomText', 'text')}
-                {renderControl('Font Family', 'fontFamily', 'select', { items: ['Impact', 'Arial', 'Helvetica', 'Comic Sans MS'] })}
+                <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="fontFamily">
+                        Font Family
+                        {fontsLoading && <span className="text-xs text-gray-500 ml-2">(Loading...)</span>}
+                    </label>
+                    <select 
+                        id="fontFamily" 
+                        name="fontFamily" 
+                        value={config.fontFamily} 
+                        onChange={handleConfigChange} 
+                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        disabled={fontsLoading}
+                    >
+                        {availableFonts.map((font) => (
+                            <option key={font} value={font}>{font}</option>
+                        ))}
+                    </select>
+                </div>
                 <div>
                     {renderControl('Font Size', 'fontSize', 'range', { min: 10, max: 100 })}
                     {fieldErrors.fontSize && <p className="text-yellow-600 text-xs italic -mt-2 mb-2">{fieldErrors.fontSize}</p>}

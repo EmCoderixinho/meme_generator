@@ -24,6 +24,8 @@ export interface ControlsPanelProps {
     isLoading: boolean;
     originalImage: string | null;
     configId: string | null;
+    availableFonts: string[];
+    fontsLoading: boolean;
     handleConfigChange: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
     handleImageUpload: (e: ChangeEvent<HTMLInputElement>) => void;
     handleWatermarkUpload: (e: ChangeEvent<HTMLInputElement>) => void;
