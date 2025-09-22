@@ -40,7 +40,9 @@ const MemeEditor: React.FC = () => {
         try {
             const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/meme/fonts`);
             if (!response.ok) {
-                throw new Error('Failed to fetch available fonts');
+                const errorText = await response.text();
+                console.error('Failed to fetch available fonts:', response.status, errorText);
+                throw new Error(`Failed to fetch available fonts: ${response.status} ${errorText}`);
             }
             const data = await response.json();
             const fonts = data.fonts || ['Impact', 'Arial', 'Helvetica', 'Comic Sans MS'];
@@ -53,6 +55,7 @@ const MemeEditor: React.FC = () => {
         } catch (error) {
             console.error('Error fetching available fonts:', error);
             // Keep the default fonts if fetch fails
+            setApiError(`Font loading error: ${error instanceof Error ? error.message : 'Unknown error'}`);
         } finally {
             setFontsLoading(false);
         }
