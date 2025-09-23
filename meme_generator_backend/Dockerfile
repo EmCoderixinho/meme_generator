@@ -3,7 +3,7 @@ FROM node:18 AS build
 WORKDIR /usr/src/app
 
 COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci && npm cache clean --force
 
 COPY . .
 RUN npm run build
@@ -16,13 +16,8 @@ RUN apt-get update && apt-get install -y \
     fonts-liberation \
     fonts-dejavu-core \
     fonts-freefont-ttf \
-    fonts-opensans \
-    fonts-roboto \
-    fonts-noto \
-    fonts-ubuntu \
-    fonts-liberation2 \
+    fonts-noto-core \
     fonts-noto-color-emoji \
-    fonts-noto-cjk \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
