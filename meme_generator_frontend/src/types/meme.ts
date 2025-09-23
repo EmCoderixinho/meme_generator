@@ -39,4 +39,5 @@ export interface ControlsPanelProps {
     apiError: string | null;
     previewImage: string | null;
     originalImage: string | null;
+    canvasSize?: { width: string; height: string };
 }

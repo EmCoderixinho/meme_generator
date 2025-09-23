@@ -283,6 +283,7 @@ const MemeEditor: React.FC = () => {
                 apiError={apiError}
                 previewImage={previewImage}
                 originalImage={originalImage}
+                canvasSize={canvasSize}
             />
         </div>
     );
