@@ -16,11 +16,16 @@ async function bootstrap() {
   // CORS configuration
   const corsOptions = {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-      // Allow requests with no origin (like mobile apps or curl requests)
+      // Allow requests with no origin (like mobile apps, curl requests, or Docker containers)
       if (!origin) return callback(null, true);
       
       // Allow localhost for development
-      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+        return callback(null, true);
+      }
+      
+      // Allow Docker service names (for container-to-container communication)
+      if (origin && (origin.includes('frontend') || origin.includes('backend') || origin.includes('nginx'))) {
         return callback(null, true);
       }
       
@@ -37,7 +42,7 @@ async function bootstrap() {
         'http://127.0.0.1:5000',
       ];
       
-      if (allowedOrigins.includes(origin)) {
+      if (origin && allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
       

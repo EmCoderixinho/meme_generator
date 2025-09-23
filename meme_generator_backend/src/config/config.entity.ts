@@ -1,9 +1,16 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { TextAlign, WatermarkPosition } from './config.enums';
 
 @Entity()
 export class Config {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 
   @Column({ nullable: true })
   topText?: string;
@@ -26,8 +33,8 @@ export class Config {
   @Column({ default: 4 })
   strokeWidth: number;
 
-  @Column({ default: 'center' })
-  textAlign: string;
+  @Column({ type: 'enum', enum: TextAlign, default: TextAlign.Center })
+  textAlign: TextAlign;
 
   @Column({ default: 20 })
   padding: number;
@@ -41,6 +48,6 @@ export class Config {
   @Column({ type: 'mediumtext', nullable: true })
   watermarkImage?: string;
 
-  @Column({ default: 'bottom-right' })
-  watermarkPosition: string;
+  @Column({ type: 'enum', enum: WatermarkPosition, default: WatermarkPosition.BottomRight })
+  watermarkPosition: WatermarkPosition;
 }

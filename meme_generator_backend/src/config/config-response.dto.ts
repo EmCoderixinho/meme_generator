@@ -1,14 +1,18 @@
-import { IsString, IsNumber, IsBoolean, IsOptional, IsEnum, Max, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { TextAlign, WatermarkPosition } from './config.enums';
 
-export class CreateConfigDto {
+export class ConfigResponseDto {
+  @ApiProperty({
+    description: 'Unique identifier for the configuration',
+    example: 'config-123'
+  })
+  id: string;
+
   @ApiProperty({
     description: 'Top text for the meme',
     example: 'TOP TEXT',
     required: false
   })
-  @IsString() @IsOptional()
   topText?: string;
 
   @ApiProperty({
@@ -16,7 +20,6 @@ export class CreateConfigDto {
     example: 'BOTTOM TEXT',
     required: false
   })
-  @IsString() @IsOptional()
   bottomText?: string;
 
   @ApiProperty({
@@ -24,7 +27,6 @@ export class CreateConfigDto {
     example: 'Arial',
     required: false
   })
-  @IsString() @IsOptional()
   fontFamily?: string;
 
   @ApiProperty({
@@ -32,7 +34,6 @@ export class CreateConfigDto {
     example: 24,
     required: false
   })
-  @IsNumber() @IsOptional()
   fontSize?: number;
 
   @ApiProperty({
@@ -40,7 +41,6 @@ export class CreateConfigDto {
     example: '#FFFFFF',
     required: false
   })
-  @IsString() @IsOptional()
   textColor?: string;
 
   @ApiProperty({
@@ -48,7 +48,6 @@ export class CreateConfigDto {
     example: '#000000',
     required: false
   })
-  @IsString() @IsOptional()
   strokeColor?: string;
 
   @ApiProperty({
@@ -56,7 +55,6 @@ export class CreateConfigDto {
     example: 4,
     required: false
   })
-  @IsNumber() @IsOptional()
   strokeWidth?: number;
 
   @ApiProperty({
@@ -65,7 +63,6 @@ export class CreateConfigDto {
     example: TextAlign.Center,
     required: false
   })
-  @IsEnum(TextAlign) @IsOptional()
   textAlign?: TextAlign;
 
   @ApiProperty({
@@ -73,7 +70,6 @@ export class CreateConfigDto {
     example: 20,
     required: false
   })
-  @IsNumber() @IsOptional()
   padding?: number;
 
   @ApiProperty({
@@ -81,7 +77,6 @@ export class CreateConfigDto {
     example: false,
     required: false
   })
-  @IsBoolean() @IsOptional()
   allCaps?: boolean;
 
   @ApiProperty({
@@ -91,15 +86,13 @@ export class CreateConfigDto {
     maximum: 0.25,
     required: false
   })
-  @IsNumber() @IsOptional() @Min(0.01) @Max(0.25)
-  scaleDown?: number = 0.05;
+  scaleDown?: number;
 
   @ApiProperty({
     description: 'Base64 encoded watermark image',
     example: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
     required: false
   })
-  @IsString() @IsOptional()
   watermarkImage?: string;
 
   @ApiProperty({
@@ -108,6 +101,25 @@ export class CreateConfigDto {
     example: WatermarkPosition.BottomRight,
     required: false
   })
-  @IsEnum(WatermarkPosition) @IsOptional()
   watermarkPosition?: WatermarkPosition;
+
+  @ApiProperty({
+    description: 'Timestamp when the configuration was created',
+    example: '2025-09-23T19:00:00.000Z'
+  })
+  createdAt: Date;
+
+  @ApiProperty({
+    description: 'Timestamp when the configuration was last updated',
+    example: '2025-09-23T19:00:00.000Z'
+  })
+  updatedAt: Date;
+}
+
+export class ConfigIdResponseDto {
+  @ApiProperty({
+    description: 'Unique identifier for the saved configuration',
+    example: 'config-123'
+  })
+  id: string;
 }

@@ -4,8 +4,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MemeModule } from './meme/meme.module';
 import { Config } from './config/config.entity';
 import { ConfigurationModule } from './config/config.module';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 
 @Module({
   imports: [
@@ -29,7 +27,7 @@ import { AppService } from './app.service';
     MemeModule,
     ConfigurationModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [],
+  providers: [],
 })
 export class AppModule {}

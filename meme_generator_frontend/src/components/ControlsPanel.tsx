@@ -153,7 +153,7 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                         onChange={handleConfigChange}
                         label="Font Size"
                         min={10}
-                        max={100}
+                        max={500}
                         unit="px"
                         error={fieldErrors.fontSize}
                     />

@@ -7,6 +7,7 @@ import { useFonts } from '../hooks/useFonts';
 import { useMemeAPI } from '../hooks/useMemeAPI';
 import { useFieldValidation } from '../hooks/useFieldValidation';
 import { useConfigRouting } from '../hooks/useConfigRouting';
+import { useConfigLoader } from '../hooks/useConfigLoader';
 import { ControlsPanel } from './ControlsPanel';
 import { PreviewPanel } from './PreviewPanel';
 import { MemeLayout } from './MemeLayout';
@@ -18,6 +19,7 @@ const MemeEditor: React.FC = () => {
     const { availableFonts, fontsLoading, error: fontsError } = useFonts();
     const { isLoading, apiError, saveConfig, generatePreview, generateMeme } = useMemeAPI();
     const { configId, isNewConfig, updateConfigId } = useConfigRouting();
+    const { loadConfig, isLoading: configLoading, error: configError } = useConfigLoader();
     
     // Local state
     const [originalImage, setOriginalImage] = useState<string | null>(null);
@@ -25,7 +27,7 @@ const MemeEditor: React.FC = () => {
     const isInitialMount = useRef(true);
     
     // Field validation
-    const { fieldErrors, setFieldError, clearFieldError } = useFieldValidation(config, canvasSize, originalImage);
+    const { fieldErrors, setFieldError, clearFieldError } = useFieldValidation();
 
     const debouncedConfig = useDebounce(config, 500);
     const debouncedCanvasSize = useDebounce(canvasSize, 500);
@@ -44,6 +46,18 @@ const MemeEditor: React.FC = () => {
     const handleClearWatermark = () => {
         updateConfig({ watermarkImage: '' });
     };
+
+    // Load configuration when configId is present
+    useEffect(() => {
+        if (configId && !isNewConfig) {
+            loadConfig(configId).then((loadedConfig) => {
+                if (loadedConfig) {
+                    // Update the config with loaded values
+                    updateConfig(loadedConfig);
+                }
+            });
+        }
+    }, [configId, isNewConfig, loadConfig, updateConfig]);
 
     // Update font family if current font is not available
     useEffect(() => {
@@ -121,8 +135,8 @@ const MemeEditor: React.FC = () => {
                 config={config}
                 canvasSize={canvasSize}
                 fieldErrors={fieldErrors}
-                apiError={apiError || fontsError}
-                isLoading={isLoading}
+                apiError={apiError || fontsError || configError}
+                isLoading={isLoading || configLoading}
                 originalImage={originalImage}
                 configId={configId}
                 availableFonts={availableFonts}
@@ -135,8 +149,8 @@ const MemeEditor: React.FC = () => {
                 handleGenerateMeme={handleGenerateMeme}
             />
             <PreviewPanel
-                isLoading={isLoading}
-                apiError={apiError}
+                isLoading={isLoading || configLoading}
+                apiError={apiError || configError}
                 previewImage={previewImage}
                 originalImage={originalImage}
                 canvasSize={canvasSize}
