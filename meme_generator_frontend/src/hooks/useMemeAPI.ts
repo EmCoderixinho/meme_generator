@@ -9,12 +9,17 @@ interface CanvasSize {
 export const useMemeAPI = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
-    const [configId, setConfigId] = useState<string | null>(null);
 
-    const saveConfig = useCallback(async (config: MemeConfig) => {
+    const saveConfig = useCallback(async (config: MemeConfig, configId?: string) => {
         try {
-            const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/config`, {
-                method: 'POST',
+            const url = configId 
+                ? `${process.env.REACT_APP_BACKEND_URL}/api/config/${configId}`
+                : `${process.env.REACT_APP_BACKEND_URL}/api/config`;
+            
+            const method = configId ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(config),
             });
@@ -24,8 +29,8 @@ export const useMemeAPI = () => {
             }
             
             const savedConfig = await response.json();
-            setConfigId(savedConfig.id);
-            return savedConfig.id;
+            const newConfigId = savedConfig.id || configId;
+            return newConfigId;
         } catch (err: any) {
             setApiError(err.message);
             throw err;
@@ -114,8 +119,6 @@ export const useMemeAPI = () => {
     return {
         isLoading,
         apiError,
-        configId,
-        setConfigId,
         saveConfig,
         generatePreview,
         generateMeme,

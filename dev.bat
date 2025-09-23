@@ -37,6 +37,3 @@ echo    View logs: docker-compose -f docker-compose.dev.yml logs -f
 echo    Stop services: docker-compose -f docker-compose.dev.yml down
 echo    Restart services: docker-compose -f docker-compose.dev.yml restart
 echo.
-echo 🔄 Hot reloading is enabled!
-echo    - Frontend changes will auto-reload in browser
-echo    - Backend changes will auto-restart the server

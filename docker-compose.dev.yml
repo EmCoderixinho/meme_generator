@@ -40,10 +40,14 @@ services:
     environment:
       - REACT_APP_BACKEND_URL=http://localhost:5000
       - CHOKIDAR_USEPOLLING=true
+      - FAST_REFRESH=true
+      - WDS_SOCKET_HOST=localhost
+      - WDS_SOCKET_PORT=3000
+      - WDS_SOCKET_PATH=/ws
     volumes:
       - ./meme_generator_frontend:/app
       - /app/node_modules
-    command: npm start
+    command: sh -c "npm start -- --host 0.0.0.0 --port 3000 --disable-host-check --watch-options-poll=1000"
     depends_on:
       - backend
     networks:
