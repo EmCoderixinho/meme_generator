@@ -17,6 +17,8 @@ REM Stop existing containers
 echo 🛑 Stopping existing containers...
 docker-compose down
 
+docker-compose build --no-cache
+
 REM Build and start services
 echo 🔨 Building and starting production services...
 docker-compose up --build -d
@@ -29,7 +31,7 @@ REM Check service health
 echo 🔍 Checking service health...
 
 REM Check backend
-curl -f http://localhost:3000/api/config > nul 2>&1
+curl -f http://localhost:5000/api/config > nul 2>&1
 if %errorlevel% equ 0 (
     echo ✅ Backend is healthy
 ) else (
@@ -39,7 +41,7 @@ if %errorlevel% equ 0 (
 )
 
 REM Check frontend
-curl -f http://localhost/health > nul 2>&1
+curl -f http://localhost:3000/health > nul 2>&1
 if %errorlevel% equ 0 (
     echo ✅ Frontend is healthy
 ) else (

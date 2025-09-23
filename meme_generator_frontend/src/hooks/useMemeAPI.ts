@@ -62,12 +62,19 @@ export const useMemeAPI = () => {
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to generate preview.');
+                let errorMessage = 'Failed to generate preview.';
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.message || errorMessage;
+                } catch {
+                    // If response is not JSON, use the status text
+                    errorMessage = response.statusText || errorMessage;
+                }
+                throw new Error(errorMessage);
             }
 
-            const blob = await response.blob();
-            return URL.createObjectURL(blob);
+            const data = await response.json();
+            return data.image; // Return the base64 image directly
         } catch (err: any) {
             setApiError(err.message);
             throw err;
@@ -91,19 +98,18 @@ export const useMemeAPI = () => {
                 throw new Error('Failed to generate meme.');
             }
 
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
+            const data = await response.json();
+            const base64Image = data.image;
             
             // Trigger download
             const a = document.createElement('a');
-            a.href = url;
+            a.href = base64Image;
             a.download = 'meme.jpg';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            URL.revokeObjectURL(url);
             
-            return url;
+            return base64Image;
         } catch (err: any) {
             setApiError(err.message);
             throw err;

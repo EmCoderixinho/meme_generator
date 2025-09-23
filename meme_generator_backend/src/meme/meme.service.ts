@@ -3,6 +3,8 @@ import sharp from 'sharp';
 import { createCanvas, CanvasRenderingContext2D, registerFont } from 'canvas';
 import { Config } from 'src/config/config.entity';
 import { CreateMemePreviewDto } from 'src/meme/create-meme-preview.dto';
+import { UpdateMemeItemDto } from 'src/meme/update-meme-item.dto';
+import { MemeResponseDto } from 'src/meme/meme-response.dto';
 import { ConfigService } from '../config/config.service';
 
 @Injectable()
@@ -19,11 +21,8 @@ export class MemeService {
     private registerSystemFonts() {
         console.log('🔤 Starting font registration...');
         
-        // First, register some essential fonts manually
+        // First, register Docker-installed fonts
         this.registerEssentialFonts();
-        
-        // Then try to discover fonts from the system
-        this.discoverAndRegisterFonts();
         
         // Then register fonts from common locations
         this.registerFontsFromCommonLocations();
@@ -33,93 +32,50 @@ export class MemeService {
     }
 
     private registerEssentialFonts() {
-        console.log('🔤 Registering essential fonts...');
+        console.log('🔤 Registering Docker-installed fonts...');
         
-        // Register some essential fonts that should always work
-        const essentialFonts = [
+        // Register fonts from Docker-installed packages (prioritized order)
+        const dockerFonts = [
+            // Liberation fonts (Arial/Times New Roman replacements)
             { family: 'Arial', path: '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf' },
             { family: 'Arial Bold', path: '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf' },
             { family: 'Times New Roman', path: '/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf' },
             { family: 'Times New Roman Bold', path: '/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf' },
-            { family: 'Impact', path: '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf' }, // Use LiberationSans-Bold as Impact
-            { family: 'Comic Sans MS', path: '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf' }, // Use LiberationSans as Comic Sans
-            { family: 'Helvetica', path: '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf' }, // Use LiberationSans as Helvetica
-            { family: 'Verdana', path: '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf' }, // Use LiberationSans as Verdana
-            // DejaVu fonts (always available)
+            { family: 'Impact', path: '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf' },
+            { family: 'Helvetica', path: '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf' },
+            { family: 'Verdana', path: '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf' },
+            
+            // DejaVu fonts (high quality, always available)
             { family: 'DejaVu Sans', path: '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf' },
             { family: 'DejaVu Serif', path: '/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf' },
             { family: 'DejaVu Sans Mono', path: '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf' },
+            
+            // FreeFont fonts (open source)
+            { family: 'FreeSans', path: '/usr/share/fonts/truetype/freefont/FreeSans.ttf' },
+            { family: 'FreeSerif', path: '/usr/share/fonts/truetype/freefont/FreeSerif.ttf' },
+            { family: 'FreeMono', path: '/usr/share/fonts/truetype/freefont/FreeMono.ttf' },
+            
+            // Noto fonts (Google's universal font family)
+            { family: 'Noto Sans', path: '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf' },
+            { family: 'Noto Serif', path: '/usr/share/fonts/truetype/noto/NotoSerif-Regular.ttf' },
+            { family: 'Noto Color Emoji', path: '/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf' },
         ];
 
         let registeredCount = 0;
-        essentialFonts.forEach(font => {
+        dockerFonts.forEach(font => {
             try {
                 registerFont(font.path, { family: font.family });
                 this.registeredFonts.add(font.family);
                 registeredCount++;
-                console.log(`✅ Registered essential font: ${font.family}`);
+                console.log(`✅ Registered Docker font: ${font.family}`);
             } catch (error) {
-                console.log(`❌ Essential font not found: ${font.family} at ${font.path}`);
+                console.log(`❌ Docker font not found: ${font.family} at ${font.path}`);
             }
         });
         
-        console.log(`🎉 Successfully registered ${registeredCount} essential fonts`);
+        console.log(`🎉 Successfully registered ${registeredCount} Docker-installed fonts`);
     }
 
-    private discoverAndRegisterFonts() {
-        try {
-            const { execSync } = require('child_process');
-            const fontPaths = execSync('fc-list : file', { encoding: 'utf8' }).trim().split('\n');
-            
-            console.log(`📁 Found ${fontPaths.length} font files on system`);
-            
-            const registeredFonts = new Set();
-            let registeredCount = 0;
-            
-            // Process fonts in batches to avoid overwhelming the system
-            const batchSize = 50;
-            for (let i = 0; i < fontPaths.length; i += batchSize) {
-                const batch = fontPaths.slice(i, i + batchSize);
-                
-                batch.forEach(fontPath => {
-                    if (fontPath && fontPath.trim()) {
-                        try {
-                            // Clean the font path
-                            const cleanPath = fontPath.trim().replace(/::.*$/, '');
-                            if (cleanPath && (cleanPath.endsWith('.ttf') || cleanPath.endsWith('.otf'))) {
-                                // Extract font family name from the path
-                                const fontName = this.extractFontName(cleanPath);
-                                
-                                if (fontName && !registeredFonts.has(fontName)) {
-                                    try {
-                                        registerFont(cleanPath, { family: fontName });
-                                        registeredFonts.add(fontName);
-                                        this.registeredFonts.add(fontName);
-                                        registeredCount++;
-                                        console.log(`✅ Registered font: ${fontName}`);
-                                    } catch (error) {
-                                        console.log(`❌ Failed to register font: ${fontName} - ${error.message}`);
-                                    }
-                                }
-                            }
-                        } catch (error) {
-                            // Font registration failed, that's okay
-                            console.log(`❌ Failed to register font from ${fontPath.trim()}: ${error.message}`);
-                        }
-                    }
-                });
-                
-                // Small delay between batches
-                if (i + batchSize < fontPaths.length) {
-                    require('child_process').execSync('sleep 0.1', { stdio: 'ignore' });
-                }
-            }
-            
-            console.log(`🎉 Successfully registered ${registeredCount} fonts from system discovery`);
-        } catch (error) {
-            console.log('❌ Could not discover system fonts:', error.message);
-        }
-    }
 
     private extractFontName(fontPath: string): string {
         const fileName = fontPath.split('/').pop()?.replace(/\.(ttf|otf)$/i, '') || '';
@@ -147,42 +103,20 @@ export class MemeService {
         return fontName;
     }
 
-    private registerAdditionalFonts() {
-        try {
-            const { execSync } = require('child_process');
-            const fontPaths = execSync('fc-list : file | head -10', { encoding: 'utf8' }).trim().split('\n');
-            
-            fontPaths.forEach(fontPath => {
-                if (fontPath && fontPath.trim()) {
-                    try {
-                        // Clean the font path by removing any extra colons or whitespace
-                        const cleanPath = fontPath.trim().replace(/::.*$/, '');
-                        if (cleanPath && (cleanPath.endsWith('.ttf') || cleanPath.endsWith('.otf'))) {
-                            // Extract font family name from the path
-                            const fontName = cleanPath.split('/').pop()?.replace(/\.(ttf|otf)$/i, '') || 'Unknown';
-                            registerFont(cleanPath, { family: fontName });
-                            console.log(`Successfully registered additional font: ${fontName} from ${cleanPath}`);
-                        }
-                    } catch (error) {
-                        // Font registration failed, that's okay
-                        console.log(`Failed to register font from ${fontPath.trim()}: ${error.message}`);
-                    }
-                }
-            });
-        } catch (error) {
-            console.log('Could not register additional fonts:', error.message);
-        }
-    }
 
     private registerFontsFromCommonLocations() {
         const fs = require('fs');
         const path = require('path');
         
-        const commonFontDirs = [
-            '/usr/share/fonts/truetype/dejavu',
-            '/usr/share/fonts/truetype/liberation',
-            '/usr/share/fonts/truetype/freefont',
-            '/usr/share/fonts/truetype/noto',
+        // Prioritize Docker-installed font directories first
+        const dockerFontDirs = [
+            '/usr/share/fonts/truetype/liberation',  // Liberation fonts (Arial/Times replacements)
+            '/usr/share/fonts/truetype/dejavu',       // DejaVu fonts (high quality)
+            '/usr/share/fonts/truetype/freefont',     // FreeFont fonts (open source)
+            '/usr/share/fonts/truetype/noto',         // Noto fonts (Google's universal)
+        ];
+        
+        const otherFontDirs = [
             '/usr/share/fonts/truetype/roboto',
             '/usr/share/fonts/truetype/opensans',
             '/usr/share/fonts/truetype/ubuntu',
@@ -194,6 +128,8 @@ export class MemeService {
             '/usr/share/fonts/Type1/100dpi',
             '/usr/share/fonts/Type1/75dpi'
         ];
+        
+        const commonFontDirs = [...dockerFontDirs, ...otherFontDirs];
 
         const registeredFonts = new Set();
         let registeredCount = 0;
@@ -309,22 +245,50 @@ export class MemeService {
 
         const compositeOperations: sharp.OverlayOptions[] = [];
         
-        let config: Config | any;
+        let config: Config | any = {
+            // Default configuration values
+            scaleDown: 0.05,
+            padding: 20,
+            fontFamily: 'Arial',
+            fontSize: 24,
+            textColor: '#FFFFFF',
+            strokeColor: '#000000',
+            strokeWidth: 4,
+            textAlign: 'center',
+            allCaps: false,
+            topText: '',
+            bottomText: '',
+            watermarkImage: '',
+            watermarkPosition: 'bottom-right'
+        };
 
+        // Get configuration if configId is provided
         if (dto.configId) {
             try {
-                config = await this.configService.getConfigById(dto.configId);
-                console.log(`Retrieved config from database:`, {
-                    fontFamily: config.fontFamily,
-                    fontSize: config.fontSize,
+                const savedConfig = await this.configService.getConfigById(dto.configId);
+                config = {
+                    ...config,
+                    ...savedConfig,
+                    // Ensure required fields have defaults if not provided
+                    fontFamily: savedConfig.fontFamily || config.fontFamily,
+                    fontSize: savedConfig.fontSize || config.fontSize,
+                    textColor: savedConfig.textColor || config.textColor,
+                    strokeColor: savedConfig.strokeColor || config.strokeColor,
+                    strokeWidth: savedConfig.strokeWidth || config.strokeWidth,
+                    textAlign: savedConfig.textAlign || config.textAlign,
+                    padding: savedConfig.padding || config.padding,
+                    allCaps: savedConfig.allCaps !== undefined ? savedConfig.allCaps : config.allCaps,
+                };
+                console.log(`Loaded config for ID ${dto.configId}:`, {
                     topText: config.topText,
-                    bottomText: config.bottomText
+                    bottomText: config.bottomText,
+                    fontFamily: config.fontFamily,
+                    fontSize: config.fontSize
                 });
             } catch (error) {
-                throw new NotFoundException(`Config with ID ${dto.configId} not found.`);
+                console.warn(`Config not found for ID: ${dto.configId}, using defaults:`, error.message);
+                // Keep the default config values
             }
-        } else {
-            throw new BadRequestException('configId must be provided.');
         }
 
         const image = sharp(imageBuffer);
@@ -423,7 +387,7 @@ export class MemeService {
       
       console.log(`Generating text layer with fontFamily: ${fontFamily}, fontSize: ${fontSize}, text: ${text}`);
       
-      const textCanvasWidth = width - (padding * 2);
+      const textCanvasWidth = Math.max(width - (padding * 2), 100); // Ensure minimum width
       const lineHeight = fontSize * 1.2;
 
       // Ensure font family is properly quoted if it contains spaces and add fallbacks
@@ -593,6 +557,111 @@ export class MemeService {
                 left: Math.round(left), 
                 top: Math.round(top) 
             });
+        }
+    }
+
+    async updateMemeItem(updateDto: UpdateMemeItemDto): Promise<MemeResponseDto> {
+        try {
+            // Get configuration if configId is provided
+            let config: Config | any = {
+                // Default configuration values
+                scaleDown: 0.05,
+                padding: 20,
+                fontFamily: 'Arial',
+                fontSize: 24,
+                textColor: '#FFFFFF',
+                strokeColor: '#000000',
+                strokeWidth: 4,
+                textAlign: 'center',
+                allCaps: false,
+                topText: '',
+                bottomText: '',
+                watermarkImage: '',
+                watermarkPosition: 'bottom-right'
+            };
+
+            if (updateDto.configId) {
+                try {
+                    const savedConfig = await this.configService.getConfigById(updateDto.configId);
+                    config = {
+                        ...config,
+                        ...savedConfig,
+                        // Ensure required fields have defaults if not provided
+                        fontFamily: savedConfig.fontFamily || config.fontFamily,
+                        fontSize: savedConfig.fontSize || config.fontSize,
+                        textColor: savedConfig.textColor || config.textColor,
+                        strokeColor: savedConfig.strokeColor || config.strokeColor,
+                        strokeWidth: savedConfig.strokeWidth || config.strokeWidth,
+                        textAlign: savedConfig.textAlign || config.textAlign,
+                        padding: savedConfig.padding || config.padding,
+                        allCaps: savedConfig.allCaps !== undefined ? savedConfig.allCaps : config.allCaps,
+                    };
+                    console.log(`Loaded config for ID ${updateDto.configId}:`, {
+                        topText: config.topText,
+                        bottomText: config.bottomText,
+                        fontFamily: config.fontFamily,
+                        fontSize: config.fontSize
+                    });
+                } catch (error) {
+                    console.warn(`Config not found for ID: ${updateDto.configId}, using defaults:`, error.message);
+                    // Keep the default config values
+                }
+            }
+
+            // Merge update data with existing config
+            const mergedConfig = {
+                ...config,
+                ...updateDto,
+                // Ensure required fields have defaults
+                fontFamily: updateDto.fontFamily || config.fontFamily,
+                fontSize: updateDto.fontSize || config.fontSize,
+                textColor: updateDto.textColor || config.textColor,
+                strokeColor: updateDto.strokeColor || config.strokeColor,
+                strokeWidth: updateDto.strokeWidth || config.strokeWidth,
+                textAlign: updateDto.textAlign || config.textAlign,
+                padding: updateDto.padding || config.padding,
+                allCaps: updateDto.allCaps !== undefined ? updateDto.allCaps : config.allCaps,
+            };
+
+            // Generate the updated meme
+            const imageBuffer = await this.generateMeme({
+                image: updateDto.image,
+                configId: updateDto.configId,
+                canvasSize: updateDto.canvasSize
+            }, { isPreview: false });
+
+            // Convert buffer to base64
+            const base64Image = `data:image/jpeg;base64,${imageBuffer.toString('base64')}`;
+
+            // Return response
+            return {
+                success: true,
+                image: base64Image,
+                configId: updateDto.configId,
+                timestamp: new Date().toISOString(),
+                canvasSize: updateDto.canvasSize ? {
+                    width: updateDto.canvasSize.width || 800,
+                    height: updateDto.canvasSize.height || 600
+                } : undefined,
+                textConfig: {
+                    topText: mergedConfig.topText,
+                    bottomText: mergedConfig.bottomText,
+                    fontFamily: mergedConfig.fontFamily,
+                    fontSize: mergedConfig.fontSize,
+                    textColor: mergedConfig.textColor,
+                    strokeColor: mergedConfig.strokeColor,
+                    strokeWidth: mergedConfig.strokeWidth,
+                    textAlign: mergedConfig.textAlign,
+                    padding: mergedConfig.padding,
+                    allCaps: mergedConfig.allCaps,
+                },
+                watermarkConfig: updateDto.watermarkImage ? {
+                    position: updateDto.watermarkPosition
+                } : undefined
+            };
+        } catch (error) {
+            console.error('Error updating meme item:', error);
+            throw new BadRequestException(`Failed to update meme item: ${error.message}`);
         }
     }
 }

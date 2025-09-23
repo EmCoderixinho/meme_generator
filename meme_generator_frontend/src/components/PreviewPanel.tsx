@@ -181,7 +181,7 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
                     {!isLoading && !apiError && originalImage && (
                         <div className="relative w-full h-full">
                             <ImagePreview
-                                src={showOriginal ? originalImage : previewImage || ''}
+                                src={showOriginal ? originalImage : (previewImage || originalImage)}
                                 alt={showOriginal ? 'Original Image' : 'Meme Preview'}
                                 title={showOriginal ? 'Original Image' : 'Meme Preview'}
                                 onLoad={handleImageLoad}
