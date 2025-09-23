@@ -1,279 +1,111 @@
-import React, { useState, useEffect, ChangeEvent, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDebounce } from '../hooks/useDebounce';
-import { MemeConfig } from '../types/meme';
+import { useMemeConfig } from '../hooks/useMemeConfig';
+import { useFileUpload } from '../hooks/useFileUpload';
+import { useCanvasSize } from '../hooks/useCanvasSize';
+import { useFonts } from '../hooks/useFonts';
+import { useMemeAPI } from '../hooks/useMemeAPI';
+import { useFieldValidation } from '../hooks/useFieldValidation';
 import { ControlsPanel } from './ControlsPanel';
 import { PreviewPanel } from './PreviewPanel';
+import { MemeLayout } from './MemeLayout';
 
 const MemeEditor: React.FC = () => {
-    const [config, setConfig] = useState<MemeConfig>({
-        topText: 'Top Text',
-        bottomText: 'Bottom Text',
-        fontFamily: 'Impact',
-        fontSize: 50,
-        textColor: '#FFFFFF',
-        strokeColor: '#000000',
-        strokeWidth: 2,
-        textAlign: 'center',
-        padding: 20,
-        allCaps: true,
-        scaleDown: 0.05,
-        watermarkImage: '',
-        watermarkPosition: 'bottom-right',
-    });
-
+    // Custom hooks for state management
+    const { config, handleConfigChange, updateConfig } = useMemeConfig();
+    const { canvasSize, handleCanvasSizeChange } = useCanvasSize();
+    const { availableFonts, fontsLoading, error: fontsError } = useFonts();
+    const { isLoading, apiError, configId, saveConfig, generatePreview, generateMeme } = useMemeAPI();
+    
+    // Local state
     const [originalImage, setOriginalImage] = useState<string | null>(null);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [apiError, setApiError] = useState<string | null>(null);
-    const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string | null }>({});
-    const [configId, setConfigId] = useState<string | null>(null);
     const isInitialMount = useRef(true);
-    const [canvasSize, setCanvasSize] = useState<{ width: string; height: string }>({ width: '', height: '' });
-    const [availableFonts, setAvailableFonts] = useState<string[]>(['Impact', 'Arial', 'Helvetica', 'Comic Sans MS']);
-    const [fontsLoading, setFontsLoading] = useState(false);
+    
+    // Field validation
+    const { fieldErrors, setFieldError, clearFieldError } = useFieldValidation(config, canvasSize, originalImage);
 
     const debouncedConfig = useDebounce(config, 500);
     const debouncedCanvasSize = useDebounce(canvasSize, 500);
 
-    const fetchAvailableFonts = useCallback(async () => {
-        setFontsLoading(true);
-        try {
-            const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/meme/fonts`);
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Failed to fetch available fonts:', response.status, errorText);
-                throw new Error(`Failed to fetch available fonts: ${response.status} ${errorText}`);
-            }
-            const data = await response.json();
-            const fonts = data.fonts || ['Impact', 'Arial', 'Helvetica', 'Comic Sans MS'];
-            setAvailableFonts(fonts);
-            
-            // If current font is not in the available fonts, update to the first available font
-            if (!fonts.includes(config.fontFamily)) {
-                setConfig(prev => ({ ...prev, fontFamily: fonts[0] || 'Impact' }));
-            }
-        } catch (error) {
-            console.error('Error fetching available fonts:', error);
-            // Keep the default fonts if fetch fails
-            setApiError(`Font loading error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        } finally {
-            setFontsLoading(false);
-        }
-    }, [config.fontFamily]);
+    // File upload hooks
+    const imageUpload = useFileUpload({
+        onSuccess: (dataUrl) => setOriginalImage(dataUrl),
+        onError: (error) => setFieldError('imageUpload', error),
+    });
 
-    const handleConfigChange = (
-        e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
-    ) => {
-        const { name, type } = e.currentTarget;
-        const value =
-            type === 'checkbox' && e.currentTarget instanceof HTMLInputElement
-                ? e.currentTarget.checked
-                : e.currentTarget.value;
-
-        setConfig((prev) => ({
-            ...prev,
-            [name]: (() => {
-                if (type === 'checkbox') return value;
-                if (typeof value === 'string' && !isNaN(Number(value)) && value !== '') { // Check if it's a valid number string
-                    const numValue = Number(value); // Convert to number
-                    // Round the values for fields that must be integers for the backend
-                    return ['fontSize', 'strokeWidth', 'padding'].includes(name)
-                        ? Math.round(numValue)
-                        : numValue;
-                }
-                return value;
-            })(),
-        }));
-    };
-
-    const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
-        const fileInput = e.currentTarget;
-        if (fileInput.files && fileInput.files[0]) {
-            const file = fileInput.files[0];
-            const maxSize = 10 * 1024 * 1024;
-
-            if (file.size > maxSize) {
-                setFieldErrors(prev => ({ ...prev, imageUpload: 'Image is too large. Please upload an image smaller than 10MB.' }));
-                setOriginalImage(null);
-                fileInput.value = ''; 
-                return;
-            }
-
-            setFieldErrors(prev => ({ ...prev, imageUpload: null }));
-
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                setOriginalImage(event.target?.result as string);
-            };
-            reader.readAsDataURL(file);
-        } else {
-            setOriginalImage(null);
-        }
-    };
-
-    const handleWatermarkUpload = (e: ChangeEvent<HTMLInputElement>) => {
-        const fileInput = e.currentTarget;
-        if (fileInput.files && fileInput.files[0]) {
-            const file = fileInput.files[0];
-            const maxSize = 10 * 1024 * 1024;
-
-            if (file.size > maxSize) {
-                setFieldErrors(prev => ({ ...prev, watermarkUpload: 'Watermark is too large. Please upload an image smaller than 10MB.' }));
-                setConfig(prev => ({ ...prev, watermarkImage: '' }));
-                fileInput.value = '';
-                return;
-            }
-
-            setFieldErrors(prev => ({ ...prev, watermarkUpload: null }));
-
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                setConfig(prev => ({ ...prev, watermarkImage: event.target?.result as string }));
-            };
-            reader.readAsDataURL(file);
-        } else {
-            setConfig(prev => ({ ...prev, watermarkImage: '' }));
-        }
-    };
-
-    const handleCanvasSizeChange = (e: ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.currentTarget;
-        setCanvasSize(prev => ({ ...prev, [name]: value }));
-    };
+    const watermarkUpload = useFileUpload({
+        onSuccess: (dataUrl) => updateConfig({ watermarkImage: dataUrl }),
+        onError: (error) => setFieldError('watermarkUpload', error),
+    });
 
     const handleClearWatermark = () => {
-        setConfig(prev => ({ ...prev, watermarkImage: '' }));
+        updateConfig({ watermarkImage: '' });
     };
 
+    // Update font family if current font is not available
     useEffect(() => {
-        // Fetch available fonts on component mount
-        fetchAvailableFonts();
-    }, [fetchAvailableFonts]);
-
-    useEffect(() => {
-        const effectiveCanvasWidth = canvasSize.width ? parseInt(canvasSize.width, 10) : (originalImage ? 1000 : 0); 
-        if (effectiveCanvasWidth > 0 && config.fontSize > effectiveCanvasWidth / 5) {
-            setFieldErrors(prev => ({ ...prev, fontSize: 'Font size might be too large for the canvas.' }));
-        } else {
-            setFieldErrors(prev => ({ ...prev, fontSize: null }));
+        if (availableFonts.length > 0 && !availableFonts.includes(config.fontFamily)) {
+            updateConfig({ fontFamily: availableFonts[0] || 'Impact' });
         }
-    }, [config.fontSize, canvasSize.width, originalImage]);
+    }, [availableFonts, config.fontFamily, updateConfig]);
 
+    // Save config when it changes
     useEffect(() => {
-        // Do not save the default config on the initial render
         if (isInitialMount.current) {
             isInitialMount.current = false;
             return;
         }
 
-        const saveConfig = async () => {
-            try {
-                const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/config`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(debouncedConfig),
-                });
-                if (!response.ok) throw new Error('Failed to save configuration.');
-                const savedConfig = await response.json();
-                setConfigId(savedConfig.id);
-            } catch (err: any) {
-                setApiError(err.message);
-            }
-        };
+        saveConfig(debouncedConfig).catch(() => {
+            // Error handling is done in the hook
+        });
+    }, [debouncedConfig, saveConfig]);
 
-        saveConfig();
-    }, [debouncedConfig]);
-
+    // Generate preview when image or config changes
     useEffect(() => {
         if (!originalImage || !configId) {
-            // Clear preview if there's no image or saved config
             setPreviewImage(null);
             return;
         }
 
-        const fetchPreview = async () => {
-            setIsLoading(true);
-            setApiError(null);
-            try {
-                const body = {
-                    image: originalImage,
-                    configId: configId,
-                    canvasSize: {
-                        width: debouncedCanvasSize.width ? parseInt(debouncedCanvasSize.width, 10) : undefined,
-                        height: debouncedCanvasSize.height ? parseInt(debouncedCanvasSize.height, 10) : undefined,
-                    }
-                };
-                const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/meme/preview`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body),
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Failed to generate preview.');
-                }
-
-                const blob = await response.blob();
-                setPreviewImage(URL.createObjectURL(blob));
-            } catch (err: any) {
-                setApiError(err.message);
-                setPreviewImage(null);
-            } finally {
-                setIsLoading(false);
-            }
+        const canvasSizeForAPI = {
+            width: debouncedCanvasSize.width ? parseInt(debouncedCanvasSize.width, 10) : undefined,
+            height: debouncedCanvasSize.height ? parseInt(debouncedCanvasSize.height, 10) : undefined,
         };
 
-        fetchPreview();
-    }, [originalImage, configId, debouncedCanvasSize]);
+        generatePreview(originalImage, configId, canvasSizeForAPI)
+            .then(setPreviewImage)
+            .catch(() => {
+                setPreviewImage(null);
+            });
+    }, [originalImage, configId, debouncedCanvasSize, generatePreview]);
 
     const handleGenerateMeme = async () => {
         if (!originalImage || !configId) return;
-        setIsLoading(true);
-        setApiError(null);
+        
         try {
-            const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/meme/generate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: originalImage, configId: configId }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to generate meme.');
-            }
-
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'meme.jpg';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-        } catch (err: any) {
-            setApiError(err.message);
-        } finally {
-            setIsLoading(false);
+            await generateMeme(originalImage, configId);
+        } catch (error) {
+            // Error handling is done in the hook
         }
     };
 
     return (
-        <div className="container mx-auto p-4 flex flex-col gap-6">
+        <MemeLayout>
             <ControlsPanel
                 config={config}
                 canvasSize={canvasSize}
                 fieldErrors={fieldErrors}
-                apiError={apiError}
+                apiError={apiError || fontsError}
                 isLoading={isLoading}
                 originalImage={originalImage}
                 configId={configId}
                 availableFonts={availableFonts}
                 fontsLoading={fontsLoading}
                 handleConfigChange={handleConfigChange}
-                handleImageUpload={handleImageUpload}
-                handleWatermarkUpload={handleWatermarkUpload}
+                handleImageUpload={imageUpload.handleFileUpload}
+                handleWatermarkUpload={watermarkUpload.handleFileUpload}
                 handleClearWatermark={handleClearWatermark}
                 handleCanvasSizeChange={handleCanvasSizeChange}
                 handleGenerateMeme={handleGenerateMeme}
@@ -285,7 +117,7 @@ const MemeEditor: React.FC = () => {
                 originalImage={originalImage}
                 canvasSize={canvasSize}
             />
-        </div>
+        </MemeLayout>
     );
 };
 
