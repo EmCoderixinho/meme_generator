@@ -2,6 +2,13 @@
 
 A full-stack meme generation application built with React frontend and NestJS backend, deployed on AWS EC2.
 
+### 🛠️ Technology Stack
+- **Backend**: Node.js with NestJS framework (TypeScript)
+- **Frontend**: React 19 with TypeScript and Tailwind CSS
+- **Database**: MySQL 8.0
+- **Containerization**: Docker & Docker Compose
+- **Cloud Deployment**: AWS EC2
+
 ## 🚀 AWS Deployment
 
 ### Overview
@@ -207,7 +214,7 @@ docker-compose ps
 ### Quick Start
 ```bash
 # Clone repository
-git clone <repository-url>
+git clone https://github.com/EmCoderixinho/meme_generator
 cd meme_generator
 
 # Set up environment
