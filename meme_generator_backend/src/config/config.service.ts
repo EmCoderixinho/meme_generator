@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CreateConfigDto } from 'src/config/create-config.dto';
-import { Config } from 'src/config/config.entity';
+import { CreateConfigDto } from './create-config.dto';
+import { Config } from './config.entity';
 
 @Injectable()
 export class ConfigService {

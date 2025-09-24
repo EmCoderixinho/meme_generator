@@ -1,11 +1,11 @@
 import { Body, Controller, Post, Res, HttpCode, HttpStatus, Get, Put, Param, BadRequestException } from '@nestjs/common';
 import { MemeService } from './meme.service';
 import type { Response } from 'express';
-import { CreateMemePreviewDto } from 'src/meme/create-meme-preview.dto';
-import { UpdateMemeItemDto } from 'src/meme/update-meme-item.dto';
-import { MemeResponseDto } from 'src/meme/meme-response.dto';
-import { FontsResponseDto } from 'src/meme/fonts-response.dto';
-import { ImageResponseDto } from 'src/meme/image-response.dto';
+import { CreateMemePreviewDto } from './create-meme-preview.dto';
+import { UpdateMemeItemDto } from './update-meme-item.dto';
+import { MemeResponseDto } from './meme-response.dto';
+import { FontsResponseDto } from './fonts-response.dto';
+import { ImageResponseDto } from './image-response.dto';
 import { ApiOperation, ApiParam, ApiOkResponse, ApiTags, ApiBody, ApiConsumes, ApiProduces } from '@nestjs/swagger';
 
 @ApiTags('Meme Generator')

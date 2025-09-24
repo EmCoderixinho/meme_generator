@@ -1,10 +1,10 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import sharp from 'sharp';
 import { createCanvas, CanvasRenderingContext2D, registerFont } from 'canvas';
-import { Config } from 'src/config/config.entity';
-import { CreateMemePreviewDto } from 'src/meme/create-meme-preview.dto';
-import { UpdateMemeItemDto } from 'src/meme/update-meme-item.dto';
-import { MemeResponseDto } from 'src/meme/meme-response.dto';
+import { Config } from '../config/config.entity';
+import { CreateMemePreviewDto } from './create-meme-preview.dto';
+import { UpdateMemeItemDto } from './update-meme-item.dto';
+import { MemeResponseDto } from './meme-response.dto';
 import { ConfigService } from '../config/config.service';
 
 @Injectable()

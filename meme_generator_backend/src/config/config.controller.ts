@@ -1,8 +1,8 @@
 import { Body, Controller, Post, Res, Get, Param, Put } from '@nestjs/common';
 import { ConfigService } from './config.service';
 import type { Response } from 'express';
-import { CreateConfigDto } from 'src/config/create-config.dto';
-import { ConfigResponseDto, ConfigIdResponseDto } from 'src/config/config-response.dto';
+import { CreateConfigDto } from './create-config.dto';
+import { ConfigResponseDto, ConfigIdResponseDto } from './config-response.dto';
 import { ApiOperation, ApiParam, ApiOkResponse, ApiTags, ApiBody, ApiConsumes, ApiProduces, ApiNotFoundResponse, ApiBadRequestResponse } from '@nestjs/swagger';
 
 @ApiTags('Configuration Management')
