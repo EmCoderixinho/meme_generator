@@ -209,7 +209,7 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                         onChange={handleConfigChange}
                         label="Stroke Width"
                         min={0}
-                        max={10}
+                        max={40}
                         unit="px"
                     />
                     <RangeSlider
@@ -219,7 +219,7 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                         onChange={handleConfigChange}
                         label="Padding"
                         min={0}
-                        max={50}
+                        max={200}
                         unit="px"
                     />
                 </div>
