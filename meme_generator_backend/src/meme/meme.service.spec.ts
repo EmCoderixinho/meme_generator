@@ -77,9 +77,7 @@ describe('MemeService', () => {
   };
 
   const mockFontService = {
-    getAvailableFonts: jest.fn().mockResolvedValue(['Arial', 'Times New Roman', 'DejaVu Sans']),
-    isFontRegistered: jest.fn().mockReturnValue(true),
-    getRegisteredFonts: jest.fn().mockReturnValue(['Arial', 'Times New Roman']),
+    getAvailableFonts: jest.fn().mockResolvedValue(['Impact', 'Arial', 'Times New Roman', 'DejaVu Sans']),
   };
 
   const mockTextRenderingService = {
@@ -120,17 +118,6 @@ describe('MemeService', () => {
       targetWidth: 800,
       targetHeight: 600,
       quality: 95,
-    }),
-    bufferToBase64: jest.fn().mockReturnValue('data:image/jpeg;base64,mock-base64-data'),
-    validateImage: jest.fn().mockResolvedValue({ isValid: true }),
-    getQualitySettings: jest.fn().mockReturnValue({ quality: 95, format: 'jpeg' }),
-    createThumbnail: jest.fn().mockResolvedValue(Buffer.from('mock-thumbnail')),
-    getImageStats: jest.fn().mockResolvedValue({
-      width: 800,
-      height: 600,
-      format: 'jpeg',
-      size: 1024,
-      aspectRatio: 1.33,
     }),
   };
 

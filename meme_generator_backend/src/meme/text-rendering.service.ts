@@ -41,9 +41,12 @@ export class TextRenderingService {
     const textCanvasWidth = Math.max(width - (padding * 2), 100);
     const lineHeight = fontSize * 1.2;
 
-    // Simple font string with fallbacks
+    // Create font string with proper fallbacks
     const safeFontFamily = fontFamily.includes(' ') ? `"${fontFamily}"` : fontFamily;
-    const fontString = `bold ${fontSize}px ${safeFontFamily}, Arial, sans-serif`;
+    const fontString = `${fontSize}px ${safeFontFamily}, Liberation Sans, DejaVu Sans, sans-serif`;
+
+    // Debug: Log the font being used
+    console.log(`🎨 Rendering text with font: ${fontString}`);
 
     // Create canvas and get text lines
     const canvas = createCanvas(textCanvasWidth, 100);

@@ -16,10 +16,15 @@ RUN apt-get update && apt-get install -y \
     fonts-liberation \
     fonts-dejavu-core \
     fonts-freefont-ttf \
-    fonts-noto-core \
-    fonts-noto-color-emoji \
     curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Install fontconfig
+RUN apt-get update && apt-get install -y fontconfig && rm -rf /var/lib/apt/lists/*
+
+# Copy ALL fonts from local fonts/ into container
+RUN mkdir -p /usr/share/fonts/truetype/custom
+COPY fonts/* /usr/share/fonts/truetype/custom/
 
 # Update font cache
 RUN fc-cache -fv
