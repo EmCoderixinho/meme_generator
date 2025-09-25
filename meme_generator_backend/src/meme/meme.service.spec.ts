@@ -2,8 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { MemeService } from './meme.service';
 import { ConfigService } from '../config/config.service';
+import { FontService } from './font.service';
+import { TextRenderingService } from './text-rendering.service';
+import { WatermarkService } from './watermark.service';
+import { ImageProcessingService } from './image-processing.service';
 import { CreateMemePreviewDto } from './create-meme-preview.dto';
-import { UpdateMemeItemDto } from './update-meme-item.dto';
 
 // Mock sharp
 jest.mock('sharp', () => {
@@ -73,6 +76,64 @@ describe('MemeService', () => {
     }),
   };
 
+  const mockFontService = {
+    getAvailableFonts: jest.fn().mockResolvedValue(['Arial', 'Times New Roman', 'DejaVu Sans']),
+    isFontRegistered: jest.fn().mockReturnValue(true),
+    getRegisteredFonts: jest.fn().mockReturnValue(['Arial', 'Times New Roman']),
+  };
+
+  const mockTextRenderingService = {
+    generateTextLayer: jest.fn().mockResolvedValue({
+      buffer: Buffer.from('mock-text-layer'),
+      height: 50,
+    }),
+  };
+
+  const mockWatermarkService = {
+    processWatermarkFromConfig: jest.fn().mockResolvedValue(null),
+    processWatermark: jest.fn().mockResolvedValue(null),
+  };
+
+  const mockImageProcessingService = {
+    processBase64Image: jest.fn().mockImplementation((base64Image: string) => {
+      if (!base64Image.includes('data:image') || base64Image === 'data:image/jpeg;base64,') {
+        throw new BadRequestException('Invalid image format. Expected a base64 string with a data URL prefix.');
+      }
+      return Buffer.from('mock-image-buffer');
+    }),
+    getImageMetadata: jest.fn().mockResolvedValue({
+      width: 800,
+      height: 600,
+      format: 'jpeg',
+      channels: 3,
+    }),
+    calculateTargetDimensions: jest.fn().mockReturnValue({
+      targetWidth: 800,
+      targetHeight: 600,
+      quality: 95,
+    }),
+    processImage: jest.fn().mockResolvedValue({
+      buffer: Buffer.from('mock-processed-image'),
+      metadata: { width: 800, height: 600, format: 'jpeg', channels: 3 },
+      originalWidth: 800,
+      originalHeight: 600,
+      targetWidth: 800,
+      targetHeight: 600,
+      quality: 95,
+    }),
+    bufferToBase64: jest.fn().mockReturnValue('data:image/jpeg;base64,mock-base64-data'),
+    validateImage: jest.fn().mockResolvedValue({ isValid: true }),
+    getQualitySettings: jest.fn().mockReturnValue({ quality: 95, format: 'jpeg' }),
+    createThumbnail: jest.fn().mockResolvedValue(Buffer.from('mock-thumbnail')),
+    getImageStats: jest.fn().mockResolvedValue({
+      width: 800,
+      height: 600,
+      format: 'jpeg',
+      size: 1024,
+      aspectRatio: 1.33,
+    }),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -80,6 +141,22 @@ describe('MemeService', () => {
         {
           provide: ConfigService,
           useValue: mockConfigService,
+        },
+        {
+          provide: FontService,
+          useValue: mockFontService,
+        },
+        {
+          provide: TextRenderingService,
+          useValue: mockTextRenderingService,
+        },
+        {
+          provide: WatermarkService,
+          useValue: mockWatermarkService,
+        },
+        {
+          provide: ImageProcessingService,
+          useValue: mockImageProcessingService,
         },
       ],
     }).compile();
@@ -136,33 +213,4 @@ describe('MemeService', () => {
     });
   });
 
-  describe('updateMemeItem', () => {
-    it('should throw BadRequestException for invalid image format', async () => {
-      const dto: UpdateMemeItemDto = {
-        image: 'data:image/jpeg;base64,', // Empty base64 data
-        configId: 'test-config',
-      };
-
-      await expect(service.updateMemeItem(dto)).rejects.toThrow(
-        /Failed to update meme item.*Invalid image format/
-      );
-    });
-
-    it('should update meme item successfully', async () => {
-      const dto: UpdateMemeItemDto = {
-        image: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=',
-        configId: 'valid-config',
-        topText: 'Updated Text',
-        fontFamily: 'Arial',
-        fontSize: 24,
-      };
-
-      const result = await service.updateMemeItem(dto);
-      expect(result.success).toBe(true);
-      expect(result.image).toContain('data:image/jpeg;base64,');
-      expect(result.textConfig?.topText).toBe('Updated Text');
-      expect(result.textConfig?.fontFamily).toBe('Arial');
-      expect(result.textConfig?.fontSize).toBe(24);
-    });
-  });
 });

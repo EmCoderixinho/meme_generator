@@ -25,14 +25,6 @@ export class MemeResponseDto {
   })
   timestamp: string;
 
-  @ApiProperty({
-    description: 'Canvas dimensions used',
-    example: { width: 800, height: 600 }
-  })
-  canvasSize?: {
-    width: number;
-    height: number;
-  };
 
   @ApiProperty({
     description: 'Text configuration used',

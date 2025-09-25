@@ -1,7 +1,6 @@
 import { Body, Controller, Post, Res, HttpCode, HttpStatus, Get, Put, Param, BadRequestException } from '@nestjs/common';
 import { MemeService } from './meme.service';
 import { CreateMemePreviewDto } from './create-meme-preview.dto';
-import { UpdateMemeItemDto } from './update-meme-item.dto';
 import { MemeResponseDto } from './meme-response.dto';
 import { FontsResponseDto } from './fonts-response.dto';
 import { ApiOperation, ApiParam, ApiOkResponse, ApiTags, ApiBody, ApiConsumes, ApiProduces } from '@nestjs/swagger';
@@ -47,12 +46,6 @@ export class MemeController {
                 image: base64Image,
                 configId: body.configId,
                 timestamp: new Date().toISOString(),
-                canvasSize: body.canvasSize ? {
-                    width: body.canvasSize.width || 800,
-                    height: body.canvasSize.height || 600
-                } : undefined,
-                textConfig: undefined, // Text config is loaded from database via configId
-                watermarkConfig: undefined // Watermark config is loaded from database via configId
             };
         } catch (error) {
             console.error('Error generating meme preview:', error);
@@ -99,12 +92,6 @@ export class MemeController {
                 image: base64Image,
                 configId: body.configId,
                 timestamp: new Date().toISOString(),
-                canvasSize: body.canvasSize ? {
-                    width: body.canvasSize.width || 800,
-                    height: body.canvasSize.height || 600
-                } : undefined,
-                textConfig: undefined, // Text config is loaded from database via configId
-                watermarkConfig: undefined // Watermark config is loaded from database via configId
             };
         } catch (error) {
             console.error('Error generating meme:', error);
@@ -143,34 +130,4 @@ export class MemeController {
         }
     }
 
-    @Put('items')
-    @ApiOperation({
-        summary: 'Update meme item',
-        description: `**Description**
-
-        API to update a meme item with new configuration. This will:
-        1. Merge the provided configuration with existing settings (if configId provided)
-        2. Generate a new meme with the updated configuration
-        3. Return the updated meme as base64 image
-
-        The API supports updating:
-        - Image content
-        - Text configuration (top/bottom text, font, colors, etc.)
-        - Canvas size
-        - Watermark settings
-        - All styling options`,
-    })
-    @ApiBody({
-        type: UpdateMemeItemDto,
-        description: 'Updated meme configuration'
-    })
-    @ApiOkResponse({
-        description: 'Successfully updated meme item',
-        type: MemeResponseDto,
-    })
-    async updateMemeItem(
-        @Body() request: UpdateMemeItemDto,
-    ): Promise<MemeResponseDto> {
-        return await this.memeService.updateMemeItem(request);
-    }
 }

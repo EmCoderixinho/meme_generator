@@ -3,7 +3,6 @@ import { BadRequestException } from '@nestjs/common';
 import { MemeController } from './meme.controller';
 import { MemeService } from './meme.service';
 import { CreateMemePreviewDto } from './create-meme-preview.dto';
-import { UpdateMemeItemDto } from './update-meme-item.dto';
 
 describe('MemeController', () => {
   let controller: MemeController;
@@ -12,7 +11,6 @@ describe('MemeController', () => {
   const mockMemeService = {
     generateMeme: jest.fn(),
     getAvailableFonts: jest.fn(),
-    updateMemeItem: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -55,7 +53,6 @@ describe('MemeController', () => {
       expect(result.success).toBe(true);
       expect(result.image).toContain('data:image/png;base64,');
       expect(result.configId).toBe('test-config');
-      expect(result.canvasSize).toEqual({ width: 800, height: 600 });
       expect(result.timestamp).toBeDefined();
     });
 
@@ -90,7 +87,6 @@ describe('MemeController', () => {
       expect(result.success).toBe(true);
       expect(result.image).toContain('data:image/jpeg;base64,');
       expect(result.configId).toBe('test-config');
-      expect(result.canvasSize).toEqual({ width: 1200, height: 800 });
     });
 
     it('should handle service errors', async () => {
@@ -128,45 +124,4 @@ describe('MemeController', () => {
     });
   });
 
-  describe('updateMemeItem', () => {
-    it('should update meme item successfully', async () => {
-      const dto: UpdateMemeItemDto = {
-        image: 'data:image/jpeg;base64,test-image-data',
-        configId: 'test-config',
-        topText: 'Updated Text',
-        fontFamily: 'Arial',
-        fontSize: 24,
-      };
-
-      const mockResponse = {
-        success: true,
-        image: 'data:image/jpeg;base64,updated-image',
-        configId: 'test-config',
-        timestamp: new Date().toISOString(),
-        textConfig: {
-          topText: 'Updated Text',
-          fontFamily: 'Arial',
-          fontSize: 24,
-        },
-      };
-
-      mockMemeService.updateMemeItem.mockResolvedValue(mockResponse);
-
-      const result = await controller.updateMemeItem(dto);
-
-      expect(mockMemeService.updateMemeItem).toHaveBeenCalledWith(dto);
-      expect(result).toEqual(mockResponse);
-    });
-
-    it('should handle service errors', async () => {
-      const dto: UpdateMemeItemDto = {
-        image: 'data:image/jpeg;base64,test-image-data',
-      };
-
-      const error = new Error('Update failed');
-      mockMemeService.updateMemeItem.mockRejectedValue(error);
-
-      await expect(controller.updateMemeItem(dto)).rejects.toThrow('Update failed');
-    });
-  });
 });

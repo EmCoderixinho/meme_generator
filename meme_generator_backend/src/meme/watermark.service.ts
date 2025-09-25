@@ -1,10 +1,11 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import sharp from 'sharp';
 import { Config } from '../config/config.entity';
+import { WatermarkPosition } from '../config/config.enums';
 
 export interface WatermarkOptions {
   watermarkImage: string;
-  watermarkPosition: string;
+  watermarkPosition: WatermarkPosition;
   canvasWidth: number;
   canvasHeight: number;
   padding: number;
@@ -77,7 +78,7 @@ export class WatermarkService {
    * Calculate watermark position based on position setting
    */
   private calculateWatermarkPosition(
-    position: string,
+    position: WatermarkPosition,
     canvasWidth: number,
     canvasHeight: number,
     watermarkWidth: number,
@@ -88,41 +89,21 @@ export class WatermarkService {
     let top = 0;
 
     switch (position) {
-      case 'top-left':
+      case WatermarkPosition.TopLeft:
         left = padding;
         top = padding;
         break;
-      case 'top-right':
+      case WatermarkPosition.TopRight:
         left = canvasWidth - watermarkWidth - padding;
         top = padding;
         break;
-      case 'bottom-left':
+      case WatermarkPosition.BottomLeft:
         left = padding;
         top = canvasHeight - watermarkHeight - padding;
         break;
-      case 'bottom-right':
+      case WatermarkPosition.BottomRight:
         left = canvasWidth - watermarkWidth - padding;
         top = canvasHeight - watermarkHeight - padding;
-        break;
-      case 'center':
-        left = (canvasWidth - watermarkWidth) / 2;
-        top = (canvasHeight - watermarkHeight) / 2;
-        break;
-      case 'top-center':
-        left = (canvasWidth - watermarkWidth) / 2;
-        top = padding;
-        break;
-      case 'bottom-center':
-        left = (canvasWidth - watermarkWidth) / 2;
-        top = canvasHeight - watermarkHeight - padding;
-        break;
-      case 'left-center':
-        left = padding;
-        top = (canvasHeight - watermarkHeight) / 2;
-        break;
-      case 'right-center':
-        left = canvasWidth - watermarkWidth - padding;
-        top = (canvasHeight - watermarkHeight) / 2;
         break;
       default:
         // Default to bottom-right if position is not recognized
@@ -136,73 +117,6 @@ export class WatermarkService {
     };
   }
 
-  /**
-   * Validate watermark image format and size
-   */
-  async validateWatermark(watermarkImage: string): Promise<{ isValid: boolean; error?: string }> {
-    try {
-      const watermarkBase64Parts = watermarkImage.split(';base64,');
-      const watermarkBase64Data = watermarkBase64Parts.pop();
-
-      if (!watermarkBase64Data) {
-        return { isValid: false, error: 'Invalid base64 format' };
-      }
-
-      const watermarkBuffer = Buffer.from(watermarkBase64Data, 'base64');
-      const metadata = await sharp(watermarkBuffer).metadata();
-
-      if (!metadata.width || !metadata.height) {
-        return { isValid: false, error: 'Could not read watermark dimensions' };
-      }
-
-      // Check if watermark is too large (more than 50% of typical canvas)
-      const maxSize = 2000; // Reasonable maximum size
-      if (metadata.width > maxSize || metadata.height > maxSize) {
-        return { isValid: false, error: `Watermark too large. Maximum size: ${maxSize}x${maxSize}px` };
-      }
-
-      return { isValid: true };
-    } catch (error) {
-      return { isValid: false, error: `Invalid watermark image: ${error.message}` };
-    }
-  }
-
-  /**
-   * Get optimal watermark size for a given canvas
-   */
-  getOptimalWatermarkSize(canvasWidth: number, canvasHeight: number): { width: number; height: number } {
-    const maxWidth = Math.round(canvasWidth * 0.25);
-    const maxHeight = Math.round(canvasHeight * 0.25);
-    
-    return {
-      width: maxWidth,
-      height: maxHeight,
-    };
-  }
-
-  /**
-   * Get available watermark positions
-   */
-  getAvailablePositions(): string[] {
-    return [
-      'top-left',
-      'top-center',
-      'top-right',
-      'left-center',
-      'center',
-      'right-center',
-      'bottom-left',
-      'bottom-center',
-      'bottom-right',
-    ];
-  }
-
-  /**
-   * Check if a watermark position is valid
-   */
-  isValidPosition(position: string): boolean {
-    return this.getAvailablePositions().includes(position);
-  }
 
   /**
    * Process watermark from config object

@@ -38,78 +38,41 @@ export class TextRenderingService {
       padding 
     } = options;
     
-    console.log(`Generating text layer with fontFamily: ${fontFamily}, fontSize: ${fontSize}, text: ${text}`);
-    
-    const textCanvasWidth = Math.max(width - (padding * 2), 100); // Ensure minimum width
+    const textCanvasWidth = Math.max(width - (padding * 2), 100);
     const lineHeight = fontSize * 1.2;
 
-    // Ensure font family is properly quoted if it contains spaces and add fallbacks
+    // Simple font string with fallbacks
     const safeFontFamily = fontFamily.includes(' ') ? `"${fontFamily}"` : fontFamily;
-    
-    // Try different font weights to see which one works
-    const fontWeights = ['bold', '900', '800', '700', '600', '500', '400', 'normal'];
-    let fontString = `bold ${fontSize}px ${safeFontFamily}, Arial, sans-serif`;
-    
-    // Test if the font is available by trying different weights
-    const testCanvas = createCanvas(100, 100);
-    const testCtx = testCanvas.getContext('2d');
-    
-    let fontFound = false;
-    for (const weight of fontWeights) {
-      const testFontString = `${weight} ${fontSize}px ${safeFontFamily}, Arial, sans-serif`;
-      testCtx.font = testFontString;
-      const metrics = testCtx.measureText('Test');
-      if (metrics.width > 0) {
-        fontString = testFontString;
-        fontFound = true;
-        console.log(`Using font weight: ${weight} for font: ${fontFamily}`);
-        break;
-      }
-    }
-    
-    // If the requested font doesn't work, try fallback fonts
-    if (!fontFound) {
-      const fallbackFonts = ['Arial', 'DejaVu Sans', 'DejaVu Serif', 'FreeSans', 'FreeSerif', 'sans-serif'];
-      for (const fallbackFont of fallbackFonts) {
-        const testFontString = `bold ${fontSize}px ${fallbackFont}`;
-        testCtx.font = testFontString;
-        const metrics = testCtx.measureText('Test');
-        if (metrics.width > 0) {
-          fontString = testFontString;
-          console.log(`Using fallback font: ${fallbackFont} instead of ${fontFamily}`);
-          break;
-        }
-      }
-    }
+    const fontString = `bold ${fontSize}px ${safeFontFamily}, Arial, sans-serif`;
 
-    // Create a temporary canvas to measure text and determine lines
-    const tempCanvas = createCanvas(textCanvasWidth, 100);
-    const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.font = fontString;
-    
-    const textLines = this.wrapText(tempCtx, text, textCanvasWidth);
-    const textCanvasHeight = textLines.length * lineHeight + (strokeWidth * 2);
-
-    const canvas = createCanvas(textCanvasWidth, textCanvasHeight);
+    // Create canvas and get text lines
+    const canvas = createCanvas(textCanvasWidth, 100);
     const ctx = canvas.getContext('2d');
     ctx.font = fontString;
-    console.log(`Canvas font set to: ${ctx.font}`);
     
-    ctx.fillStyle = textColor;
-    ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = strokeWidth ?? 4;
-    ctx.textAlign = textAlign;
-    ctx.textBaseline = 'top';
+    const textLines = this.wrapText(ctx, text, textCanvasWidth);
+    const textCanvasHeight = textLines.length * lineHeight + (strokeWidth * 2);
+
+    // Create final canvas
+    const finalCanvas = createCanvas(textCanvasWidth, textCanvasHeight);
+    const finalCtx = finalCanvas.getContext('2d');
+    finalCtx.font = fontString;
+    finalCtx.fillStyle = textColor;
+    finalCtx.strokeStyle = strokeColor;
+    finalCtx.lineWidth = strokeWidth ?? 4;
+    finalCtx.textAlign = textAlign;
+    finalCtx.textBaseline = 'top';
 
     const x = textAlign === 'center' ? textCanvasWidth / 2 : (textAlign === 'left' ? 0 : textCanvasWidth);
 
+    // Draw text lines
     textLines.forEach((line, index) => {
       const y = index * lineHeight + (strokeWidth / 2);
-      ctx.strokeText(line, x, y);
-      ctx.fillText(line, x, y);
+      finalCtx.strokeText(line, x, y);
+      finalCtx.fillText(line, x, y);
     });
 
-    return { buffer: canvas.toBuffer('image/png'), height: textCanvasHeight };
+    return { buffer: finalCanvas.toBuffer('image/png'), height: textCanvasHeight };
   }
 
   private wrapText(ctx: CanvasRenderingContext2D, textToWrap: string, maxWidth: number): string[] {
@@ -153,79 +116,5 @@ export class TextRenderingService {
     }
     lines.push(currentLine.trim());
     return lines;
-  }
-
-  /**
-   * Calculate the optimal font size for text to fit within given dimensions
-   */
-  calculateOptimalFontSize(
-    text: string, 
-    maxWidth: number, 
-    maxHeight: number, 
-    fontFamily: string, 
-    padding: number = 20
-  ): number {
-    const textWidth = maxWidth - (padding * 2);
-    const testCanvas = createCanvas(textWidth, 100);
-    const testCtx = testCanvas.getContext('2d');
-    
-    let fontSize = 24;
-    let found = false;
-    
-    // Try decreasing font sizes until text fits
-    while (fontSize > 8 && !found) {
-      const safeFontFamily = fontFamily.includes(' ') ? `"${fontFamily}"` : fontFamily;
-      testCtx.font = `bold ${fontSize}px ${safeFontFamily}, Arial, sans-serif`;
-      
-      const textLines = this.wrapText(testCtx, text, textWidth);
-      const lineHeight = fontSize * 1.2;
-      const totalHeight = textLines.length * lineHeight;
-      
-      if (totalHeight <= maxHeight - (padding * 2)) {
-        found = true;
-      } else {
-        fontSize -= 2;
-      }
-    }
-    
-    return Math.max(fontSize, 8); // Minimum font size of 8
-  }
-
-  /**
-   * Validate if a font is available and working
-   */
-  validateFont(fontFamily: string, fontSize: number = 24): boolean {
-    try {
-      const testCanvas = createCanvas(100, 100);
-      const testCtx = testCanvas.getContext('2d');
-      const safeFontFamily = fontFamily.includes(' ') ? `"${fontFamily}"` : fontFamily;
-      testCtx.font = `bold ${fontSize}px ${safeFontFamily}, Arial, sans-serif`;
-      
-      const metrics = testCtx.measureText('Test');
-      return metrics.width > 0;
-    } catch (error) {
-      return false;
-    }
-  }
-
-  /**
-   * Get the best available font from a list of preferred fonts
-   */
-  getBestAvailableFont(preferredFonts: string[]): string {
-    for (const font of preferredFonts) {
-      if (this.validateFont(font)) {
-        return font;
-      }
-    }
-    
-    // Fallback to basic fonts
-    const fallbackFonts = ['Arial', 'DejaVu Sans', 'DejaVu Serif', 'FreeSans', 'FreeSerif', 'sans-serif'];
-    for (const font of fallbackFonts) {
-      if (this.validateFont(font)) {
-        return font;
-      }
-    }
-    
-    return 'Arial'; // Ultimate fallback
   }
 }

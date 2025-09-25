@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Config } from '../config/config.entity';
 import { CreateMemePreviewDto } from './create-meme-preview.dto';
-import { UpdateMemeItemDto } from './update-meme-item.dto';
 import { MemeResponseDto } from './meme-response.dto';
 import { ConfigService } from '../config/config.service';
 import { FontService } from './font.service';
@@ -34,17 +33,6 @@ export class MemeService {
         const metadata = await this.imageProcessingService.getImageMetadata(imageBuffer);
         const originalWidth = metadata.width;
         const originalHeight = metadata.height;
-
-        // Calculate target dimensions and quality
-        const { targetWidth, targetHeight, quality } = this.imageProcessingService.calculateTargetDimensions(
-          originalWidth,
-          originalHeight,
-          {
-            isPreview: options.isPreview,
-            scaleDown: config.scaleDown,
-            canvasSize: dto.canvasSize,
-          }
-        );
 
         // Prepare composite operations
         const compositeOperations = await this.prepareCompositeOperations(config, originalWidth, originalHeight);
@@ -101,12 +89,12 @@ export class MemeService {
                     padding: savedConfig.padding || config.padding,
                     allCaps: savedConfig.allCaps !== undefined ? savedConfig.allCaps : config.allCaps,
                 };
-                console.log(`Loaded config for ID ${configId}:`, {
+                /*console.log(`Loaded config for ID ${configId}:`, {
                     topText: config.topText,
                     bottomText: config.bottomText,
                     fontFamily: config.fontFamily,
                     fontSize: config.fontSize
-                });
+                });*/
             } catch (error) {
                 console.warn(`Config not found for ID: ${configId}, using defaults:`, error.message);
                 // Keep the default config values
@@ -171,65 +159,4 @@ export class MemeService {
         return compositeOperations;
     }
 
-    async updateMemeItem(updateDto: UpdateMemeItemDto): Promise<MemeResponseDto> {
-        try {
-            // Get base configuration
-            const baseConfig = await this.getConfiguration(updateDto.configId);
-
-            // Merge update data with existing config
-            const mergedConfig = {
-                ...baseConfig,
-                ...updateDto,
-                // Ensure required fields have defaults
-                fontFamily: updateDto.fontFamily || baseConfig.fontFamily,
-                fontSize: updateDto.fontSize || baseConfig.fontSize,
-                textColor: updateDto.textColor || baseConfig.textColor,
-                strokeColor: updateDto.strokeColor || baseConfig.strokeColor,
-                strokeWidth: updateDto.strokeWidth || baseConfig.strokeWidth,
-                textAlign: updateDto.textAlign || baseConfig.textAlign,
-                padding: updateDto.padding || baseConfig.padding,
-                allCaps: updateDto.allCaps !== undefined ? updateDto.allCaps : baseConfig.allCaps,
-            };
-
-            // Generate the updated meme
-            const imageBuffer = await this.generateMeme({
-                image: updateDto.image,
-                configId: updateDto.configId,
-                canvasSize: updateDto.canvasSize
-            }, { isPreview: false });
-
-            // Convert buffer to base64
-            const base64Image = this.imageProcessingService.bufferToBase64(imageBuffer, 'jpeg');
-
-            // Return response
-            return {
-                success: true,
-                image: base64Image,
-                configId: updateDto.configId,
-                timestamp: new Date().toISOString(),
-                canvasSize: updateDto.canvasSize ? {
-                    width: updateDto.canvasSize.width || 800,
-                    height: updateDto.canvasSize.height || 600
-                } : undefined,
-                textConfig: {
-                    topText: mergedConfig.topText,
-                    bottomText: mergedConfig.bottomText,
-                    fontFamily: mergedConfig.fontFamily,
-                    fontSize: mergedConfig.fontSize,
-                    textColor: mergedConfig.textColor,
-                    strokeColor: mergedConfig.strokeColor,
-                    strokeWidth: mergedConfig.strokeWidth,
-                    textAlign: mergedConfig.textAlign,
-                    padding: mergedConfig.padding,
-                    allCaps: mergedConfig.allCaps,
-                },
-                watermarkConfig: updateDto.watermarkImage ? {
-                    position: updateDto.watermarkPosition
-                } : undefined
-            };
-        } catch (error) {
-            console.error('Error updating meme item:', error);
-            throw new BadRequestException(`Failed to update meme item: ${error.message}`);
-        }
-    }
 }
