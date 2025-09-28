@@ -26,7 +26,10 @@ export class ConfigService {
   async getConfigById(id: string): Promise<Config> {
     const config = await this.configRepository.findOne({ where: { id } });
     if (!config) throw new NotFoundException(`Config with ID ${id} not found.`);
-    return config;
+    
+    // Remove createdAt and updatedAt from response
+    const { createdAt, updatedAt, ...configWithoutTimestamps } = config;
+    return configWithoutTimestamps as Config;
   }
 
   async updateConfig(id: string, dto: CreateConfigDto): Promise<Config> {
@@ -36,6 +39,10 @@ export class ConfigService {
         updatedDto.scaleDown = config.scaleDown || 0.05;
     }
     this.configRepository.merge(config, updatedDto);
-    return this.configRepository.save(config);
-    }
+    const savedConfig = await this.configRepository.save(config);
+    
+    // Remove createdAt and updatedAt from response
+    const { createdAt, updatedAt, ...configWithoutTimestamps } = savedConfig;
+    return configWithoutTimestamps as Config;
+  }
 }

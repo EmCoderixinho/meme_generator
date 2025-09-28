@@ -59,7 +59,6 @@ export class ConfigController {
     API to retrieve a saved meme configuration by its unique identifier. This will:
     1. Look up the configuration in the database
     2. Return the complete configuration data
-    3. Include timestamps for creation and last update
 
     **Use Cases:**
     - Load previously saved configurations
@@ -69,7 +68,6 @@ export class ConfigController {
 
     **Response includes:**
     - All configuration parameters
-    - Creation and update timestamps
     - Unique configuration identifier
 
     **Note:** Returns 404 if configuration with the specified ID is not found.`,
@@ -111,7 +109,6 @@ export class ConfigController {
     - Only provided fields will be updated
     - Missing fields retain their existing values
     - Validation applies to all provided fields
-    - Timestamps are automatically updated
 
     **Note:** Returns 404 if configuration with the specified ID is not found.`,
   })

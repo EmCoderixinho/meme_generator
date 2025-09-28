@@ -102,18 +102,6 @@ export class ConfigResponseDto {
     required: false
   })
   watermarkPosition?: WatermarkPosition;
-
-  @ApiProperty({
-    description: 'Timestamp when the configuration was created',
-    example: '2025-09-23T19:00:00.000Z'
-  })
-  createdAt: Date;
-
-  @ApiProperty({
-    description: 'Timestamp when the configuration was last updated',
-    example: '2025-09-23T19:00:00.000Z'
-  })
-  updatedAt: Date;
 }
 
 export class ConfigIdResponseDto {

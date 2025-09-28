@@ -81,16 +81,16 @@ docker-compose ps
 docker-compose logs -f
 
 # Test endpoints
-curl http://localhost:5000/api/config  # Backend health check
+curl http://localhost:5000/api/config/:id  # Backend health check
 curl http://localhost:3000             # Frontend
 ```
 
 ### Access Information
 
 #### Application URLs
-- **Frontend**: `http://ec2PublicIP.eu-north-1.compute.amazonaws.com:3000`
-- **Backend API**: `http://ec2PublicIP.eu-north-1.compute.amazonaws.com:5000`
-- **API Documentation**: `http://ec2PublicIP.eu-north-1.compute.amazonaws.com:5000/api`
+- **Frontend**: `http://ec2PublicIP:3000`
+- **Backend API**: `http://ec2PublicIP:5000`
+- **API Documentation**: `http://ec2PublicIP:5000/api`
 
 #### Port Configuration
 - **Frontend**: 3000 (mapped to container port 80)
@@ -227,14 +227,3 @@ docker-compose up -d
 # Frontend: http://localhost:3000
 # Backend: http://localhost:5000/api
 ```
-
-### Technology Stack
-- **Frontend**: React 19, TypeScript, Tailwind CSS
-- **Backend**: NestJS, TypeScript, TypeORM
-- **Database**: MySQL 8.0
-- **Containerization**: Docker, Docker Compose
-- **Cloud Provider**: AWS EC2
-
----
-
-*Deployment completed successfully on AWS EC2 with Docker containers. The application is accessible at the provided URLs and fully functional.*

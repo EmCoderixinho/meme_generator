@@ -34,6 +34,11 @@ WORKDIR /usr/src/app
 # Create non-root user
 RUN groupadd -r nodejs && useradd -r -g nodejs nodejs
 
+# Create font cache directories with proper permissions
+RUN mkdir -p /var/cache/fontconfig && \
+    chown -R nodejs:nodejs /var/cache/fontconfig && \
+    chmod -R 755 /var/cache/fontconfig
+
 # Copy package files
 COPY package*.json ./
 
@@ -45,6 +50,11 @@ COPY --from=build /usr/src/app/dist ./dist
 
 # Change ownership to nodejs user
 RUN chown -R nodejs:nodejs /usr/src/app
+
+# Set fontconfig environment variable
+ENV FONTCONFIG_PATH=/etc/fonts
+ENV FONTCONFIG_FILE=/etc/fonts/fonts.conf
+
 USER nodejs
 
 # Expose port
