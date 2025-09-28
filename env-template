@@ -14,11 +14,3 @@ DATABASE_PASSWORD=your_secure_password_here
 
 # Frontend Configuration
 REACT_APP_BACKEND_URL=/api
-
-# JWT Authentication
-JWT_SECRET=your_super_secret_jwt_key_12345
-JWT_EXPIRES_IN=24h
-
-# Development settings
-DEBUG=true
-LOG_LEVEL=debug
