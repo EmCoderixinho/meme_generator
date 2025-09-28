@@ -27,7 +27,7 @@ const MemeEditor: React.FC = () => {
     const isInitialMount = useRef(true);
     
     // Field validation
-    const { fieldErrors, setFieldError, clearFieldError } = useFieldValidation();
+    const { fieldErrors, setFieldError } = useFieldValidation();
 
     const debouncedConfig = useDebounce(config, 500);
     const debouncedCanvasSize = useDebounce(canvasSize, 500);
@@ -45,6 +45,7 @@ const MemeEditor: React.FC = () => {
 
     const handleClearWatermark = () => {
         updateConfig({ watermarkImage: '' });
+        watermarkUpload.clearError(); // Clear the file input as well
     };
 
     // Load configuration when configId is present
@@ -66,10 +67,15 @@ const MemeEditor: React.FC = () => {
         }
     }, [availableFonts, config.fontFamily, updateConfig]);
 
-    // Save config when it changes
+    // Save config when it changes (but only if user has uploaded an image)
     useEffect(() => {
         if (isInitialMount.current) {
             isInitialMount.current = false;
+            return;
+        }
+
+        // Only save config if user has uploaded an image
+        if (!originalImage) {
             return;
         }
 

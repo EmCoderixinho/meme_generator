@@ -1,4 +1,4 @@
-import { useState, useCallback, ChangeEvent } from 'react';
+import { useState, useCallback, ChangeEvent, useRef } from 'react';
 
 interface FileUploadOptions {
     maxSize?: number;
@@ -10,9 +10,11 @@ export const useFileUpload = (options: FileUploadOptions = {}) => {
     const { maxSize = 10 * 1024 * 1024, onSuccess, onError } = options;
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     const handleFileUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
         const fileInput = e.currentTarget;
+        fileInputRef.current = fileInput;
         if (!fileInput.files || !fileInput.files[0]) {
             onSuccess?.('');
             return;
@@ -48,6 +50,10 @@ export const useFileUpload = (options: FileUploadOptions = {}) => {
 
     const clearError = useCallback(() => {
         setError(null);
+        // Clear the file input value
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
     }, []);
 
     return {

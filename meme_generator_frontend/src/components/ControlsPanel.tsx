@@ -1,5 +1,5 @@
 import React from 'react';
-import { MemeConfig, ControlsPanelProps } from '../types/meme';
+import { ControlsPanelProps } from '../types/meme';
 import {
   SectionHeader,
   FormInput,
@@ -298,7 +298,6 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                 onClick={handleGenerateMeme}
                 disabled={!originalImage || !configId || isLoading}
                 loading={isLoading}
-                variant="success"
                 fullWidth
             >
                 {isLoading ? 'Generating...' : 'Generate Meme'}

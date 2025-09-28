@@ -18,19 +18,14 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
     originalImage,
     canvasSize,
 }) => {
-    const [imageError, setImageError] = useState(false);
     const [showOriginal, setShowOriginal] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
     const [imageFits, setImageFits] = useState(false);
 
-    const handleImageError = () => {
-        setImageError(true);
-    };
 
     const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-        setImageError(false);
         
         // Capture the image element reference before setTimeout
         const img = e.currentTarget;
@@ -45,7 +40,6 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
             
             if (container) {
                 const containerRect = container.getBoundingClientRect();
-                const imageRect = img.getBoundingClientRect();
                 
                 // Get the actual image dimensions (not the displayed dimensions)
                 const actualImageWidth = img.naturalWidth;
@@ -185,7 +179,6 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
                                 alt={showOriginal ? 'Original Image' : 'Meme Preview'}
                                 title={showOriginal ? 'Original Image' : 'Meme Preview'}
                                 onLoad={handleImageLoad}
-                                onImageError={handleImageError}
                                 isDragging={isDragging}
                                 imagePosition={imagePosition}
                                 imageFits={imageFits}

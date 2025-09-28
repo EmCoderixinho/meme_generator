@@ -5,7 +5,6 @@ interface ActionButtonProps {
   disabled?: boolean;
   loading?: boolean;
   children: React.ReactNode;
-  variant?: 'primary' | 'secondary' | 'success' | 'danger';
   size?: 'sm' | 'md' | 'lg';
   fullWidth?: boolean;
 }
@@ -15,23 +14,9 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
   disabled = false,
   loading = false,
   children,
-  variant = 'success',
   size = 'lg',
   fullWidth = false
 }) => {
-  const getVariantClasses = () => {
-    switch (variant) {
-      case 'primary':
-        return 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white focus:ring-blue-300';
-      case 'secondary':
-        return 'bg-gray-500 hover:bg-gray-600 text-white focus:ring-gray-300';
-      case 'danger':
-        return 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-300';
-      default:
-        return 'bg-white hover:bg-gray-50 text-green-600 focus:ring-green-300';
-    }
-  };
-
   const getSizeClasses = () => {
     switch (size) {
       case 'sm':
@@ -43,23 +28,16 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
     }
   };
 
-  const getContainerClasses = () => {
-    if (variant === 'success') {
-      return 'bg-gradient-to-r from-green-500 to-emerald-600 p-6 rounded-lg shadow-lg';
-    }
-    return '';
-  };
-
   const buttonClasses = `
     ${fullWidth ? 'w-full' : ''} 
-    ${getVariantClasses()} 
+    bg-white hover:bg-gray-50 text-green-600 focus:ring-green-300
     font-bold rounded-lg focus:outline-none focus:ring-4 
     disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed 
     transition-all duration-200 flex items-center justify-center
     ${getSizeClasses()}
   `;
 
-  const containerClasses = getContainerClasses();
+  const containerClasses = 'bg-gradient-to-r from-green-500 to-emerald-600 p-6 rounded-lg shadow-lg';
 
   const button = (
     <button
@@ -77,11 +55,9 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
         </>
       ) : (
         <>
-          {variant === 'success' && (
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          )}
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
           {children}
         </>
       )}

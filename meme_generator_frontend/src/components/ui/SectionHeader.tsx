@@ -17,8 +17,8 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
 }) => {
   return (
     <div className="flex items-center mb-6">
-      <div className={`${iconBgColor} p-2 rounded-lg mr-3`}>
-        <div className={`w-5 h-5 ${iconColor}`}>
+      <div className={`${iconBgColor} p-2 rounded-lg mr-3 flex items-center justify-center`}>
+        <div className={`w-5 h-5 ${iconColor} flex items-center justify-center`}>
           {icon}
         </div>
       </div>

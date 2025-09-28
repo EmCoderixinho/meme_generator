@@ -1,4 +1,4 @@
-FROM node:18-alpine as build-step
+FROM node:18-alpine AS build-step
 
 WORKDIR /app
 
@@ -10,7 +10,7 @@ ENV REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci && npm cache clean --force
 
 # Copy source code
 COPY . .
@@ -18,7 +18,7 @@ COPY . .
 # Build the application
 RUN npm run build
 
-FROM nginx:stable-alpine as production-step
+FROM nginx:stable-alpine AS production-step
 
 # Copy built application
 COPY --from=build-step /app/build /usr/share/nginx/html
